@@ -18,15 +18,7 @@ void test_int_basic() {
   int b = a; // expected-warning {{use of moved-from value 'a'}}
 }
 
-// Test 2: Reinitialization clears state
-void test_reinit() {
-  int a = 10;
-  consume_int(std::move(a));
-  a = 20; // Reinitialize
-  int b = a; // OK - no warning
-}
-
-// Test 3: Multiple types
+// Test 2: Multiple types
 void test_double() {
   double d = 3.14;
   consume_double(std::move(d)); // expected-note {{moved here via std::move or rvalue reference}}
@@ -68,14 +60,11 @@ int test_use_in_return() {
   return a; // expected-warning {{use of moved-from value 'a'}}
 }
 
-// Test 6: Multiple moves in sequence
-void test_multiple_moves() {
+// Test 6: Multiple uses after move
+void test_multiple_uses() {
   int a = 10;
   consume_int(std::move(a)); // expected-note {{moved here via std::move or rvalue reference}}
   int b = a; // expected-warning {{use of moved-from value 'a'}}
-
-  a = 30; // Reinit
-  consume_int(std::move(a)); // expected-note {{moved here via std::move or rvalue reference}}
   int c = a; // expected-warning {{use of moved-from value 'a'}}
 }
 
@@ -104,55 +93,16 @@ void test_bool() {
   bool c = b; // expected-warning {{use of moved-from value 'b'}}
 }
 
-// Test 9: Reinit after conditional move
-void test_reinit_after_cond(bool cond) {
+// Test 8: Conditional move
+void test_conditional_move(bool cond) {
   int a = 10;
   if (cond) {
     consume_int(std::move(a)); // expected-note {{moved here via std::move or rvalue reference}}
   }
   int b = a; // expected-warning {{use of moved-from value 'a'}}
-  a = 50; // Reinit
-  int c = a; // OK - reinitialized
 }
 
-// Test 10: Lambda init-capture with move
-void test_lambda_init_capture_move() {
-  int a = 10;
-  auto lambda = [b = std::move(a)]() { return b; }; // expected-note {{moved here via std::move or rvalue reference}}
-  int c = a; // expected-warning {{use of moved-from value 'a'}}
-}
-
-// Test 11: Lambda init-capture without move (value)
-void test_lambda_init_capture_value() {
-  int a = 10;
-  auto lambda = [b = a]() { return b; }; // Not a move
-  int c = a; // OK - no warning
-}
-
-// Test 12: Lambda reference capture
-void test_lambda_ref_capture() {
-  int a = 10;
-  auto lambda = [&a]() { return a; }; // Not a move
-  int b = a; // OK - no warning
-}
-
-// Test 13: Lambda value capture
-void test_lambda_value_capture() {
-  int a = 10;
-  auto lambda = [a]() { return a; }; // Not a move (copies)
-  int b = a; // OK - no warning
-}
-
-// Test 14: Multiple captures with move
-void test_lambda_multiple_captures() {
-  int x = 10;
-  int y = 20;
-  auto lambda = [a = std::move(x), b = y]() { return a + b; }; // expected-note {{moved here via std::move or rvalue reference}}
-  int z = x; // expected-warning {{use of moved-from value 'x'}}
-  int w = y; // OK - y was copied, not moved
-}
-
-// Test 15: Move-after-move
+// Test 10: Move-after-move
 void test_move_after_move() {
   int a = 10;
   consume_int(std::move(a)); // expected-note {{moved here via std::move or rvalue reference}}
@@ -179,21 +129,7 @@ void test_loop_with_move() {
   }
 }
 
-// Test 18: Capture after move (explicit)
-void test_capture_after_move() {
-  int a = 10;
-  consume_int(std::move(a)); // expected-note {{moved here via std::move or rvalue reference}}
-  auto lambda = [a]() { return a; }; // expected-warning {{use of moved-from value 'a'}}
-}
-
-// Test 19: Capture after move (implicit =)
-void test_implicit_capture_after_move() {
-  int a = 10;
-  consume_int(std::move(a)); // expected-note {{moved here via std::move or rvalue reference}}
-  auto lambda = [=]() { return a; }; // expected-warning {{use of moved-from value 'a'}}
-}
-
-// Test 20: Switch with fallthrough
+// Test 15: Switch with fallthrough
 void test_switch_fallthrough(int cond) {
   int a = 10;
   switch (cond) {

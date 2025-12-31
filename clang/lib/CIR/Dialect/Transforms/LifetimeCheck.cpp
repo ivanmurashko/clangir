@@ -74,8 +74,6 @@ struct LifetimeCheckPass : public LifetimeCheckBase<LifetimeCheckPass> {
                          DerefStyle derefStyle = DerefStyle::Direct);
   void checkCoroTaskStore(StoreOp storeOp);
   void checkLambdaCaptureStore(StoreOp storeOp);
-  void checkLambdaInitCaptureMove(StoreOp storeOp, mlir::Value lambdaAddr,
-                                  LoadOp loadOp, mlir::Value lambdaCaptureAddr);
   void checkMovedFromValue(StoreOp storeOp);
   void trackCallToCoroutine(CallOp callOp);
 
@@ -88,7 +86,7 @@ struct LifetimeCheckPass : public LifetimeCheckBase<LifetimeCheckPass> {
   void checkCopyAssignment(CallOp callOp, ASTCXXMethodDeclInterface m);
   void checkNonConstUseOfOwner(mlir::Value ownerAddr, mlir::Location loc);
   void markOwnerAsMovedFrom(mlir::Value addr, mlir::Location loc);
-  bool shouldSkipMoveFromTemporary(mlir::Value v);
+  bool movesFromTemporary(mlir::Value v);
   bool isSmartPointerSafeMethod(llvm::StringRef methodName);
   void checkOperators(CallOp callOp, ASTCXXMethodDeclInterface m);
   void checkOtherMethodsAndFunctions(CallOp callOp,
@@ -636,6 +634,7 @@ void LifetimeCheckPass::checkFunc(cir::FuncOp fnOp) {
     getPmap().clear();
   pmapNullHist.clear();
   invalidHist.clear();
+  emittedDiagnostics.clear();
 
   // Create a new pmap for this function.
   PMapType localPmap{};
@@ -942,7 +941,7 @@ static bool isSmartPointerType(mlir::Type ty,
   return cache[originalTy];
 }
 
-bool LifetimeCheckPass::shouldSkipMoveFromTemporary(mlir::Value v) {
+bool LifetimeCheckPass::movesFromTemporary(mlir::Value v) {
   auto allocaOp = v.getDefiningOp<cir::AllocaOp>();
   if (!allocaOp)
     return false;
@@ -1176,103 +1175,18 @@ mlir::Value LifetimeCheckPass::getLambdaFromMemberAccess(mlir::Value addr) {
   return allocaOp;
 }
 
-void LifetimeCheckPass::checkLambdaInitCaptureMove(
-    StoreOp storeOp, mlir::Value lambdaAddr, LoadOp loadOp,
-    mlir::Value lambdaCaptureAddr) {
-  auto sourceAddr = loadOp.getAddr();
-
-  // Get the field name of the capture being stored
-  auto getMemberOp = lambdaCaptureAddr.getDefiningOp<cir::GetMemberOp>();
-  if (!getMemberOp)
-    return;
-
-  auto fieldName = getMemberOp.getName();
-
-  // Access lambda AST to check if this capture uses std::move
-  // lambdaAddr is an AllocaOp result (pointer type), we need the allocated type
-  auto lambdaType = lambdaAddr.getType();
-  auto ptrType = dyn_cast<cir::PointerType>(lambdaType);
-  if (!ptrType)
-    return;
-
-  auto recordType = dyn_cast<cir::RecordType>(ptrType.getPointee());
-  if (!recordType)
-    return;
-
-  auto astAttr = recordType.getAst();
-  if (!astAttr.isLambda())
-    return;
-
-  auto *recordDecl =
-      dyn_cast_or_null<clang::CXXRecordDecl>(astAttr.getRawDecl());
-  if (!recordDecl)
-    return;
-
-  // Find the specific capture matching this field name
-  for (const auto &capture : recordDecl->captures()) {
-    if (!capture.capturesVariable())
-      continue;
-
-    auto *capturedVar = capture.getCapturedVar();
-    if (!capturedVar)
-      continue;
-
-    // getCapturedVar() returns ValueDecl*, but for init-captures it's a VarDecl
-    auto *varDecl = dyn_cast<clang::VarDecl>(capturedVar);
-    if (!varDecl || !varDecl->isInitCapture())
-      continue;
-
-    // Match the capture by field name
-    if (varDecl->getName() != fieldName)
-      continue;
-
-    // Check if THIS specific capture's init expression uses std::move
-    auto *initExpr = varDecl->getInit();
-    if (!initExpr)
-      continue;
-
-    // Detect std::move: it's a CallExpr to a function named "move"
-    // We need to strip implicit casts to get to the actual call
-    auto *strippedExpr = initExpr->IgnoreImplicit();
-    if (auto *callExpr = dyn_cast<clang::CallExpr>(strippedExpr)) {
-      if (auto *callee = callExpr->getDirectCallee()) {
-        if (callee->getNameAsString() == "move") {
-          // Found init-capture with std::move
-          // Mark source as moved-from
-          if (getPmap().count(sourceAddr) && !owners.count(sourceAddr) &&
-              !ptrs.count(sourceAddr)) {
-            markPsetInvalid(sourceAddr, InvalidStyle::MovedFrom,
-                            storeOp.getLoc());
-          }
-          return;
-        }
-      }
-    }
-  }
-}
-
 void LifetimeCheckPass::checkLambdaCaptureStore(StoreOp storeOp) {
   auto localByRefAddr = storeOp.getValue();
   auto lambdaCaptureAddr = storeOp.getAddr();
 
+  if (!localByRefAddr.getDefiningOp<cir::AllocaOp>())
+    return;
   auto lambdaAddr = getLambdaFromMemberAccess(lambdaCaptureAddr);
   if (!lambdaAddr)
     return;
 
-  // Case 1: Reference capture - value is an AllocaOp (address)
-  if (localByRefAddr.getDefiningOp<cir::AllocaOp>()) {
-    if (currScope->localValues.count(localByRefAddr))
-      getPmap()[lambdaAddr].insert(State::getLocalValue(localByRefAddr));
-    return;
-  }
-
-  // Case 2: Value/move capture - value is loaded first
-  // Check if this is an init-capture with std::move
-  auto loadOp = localByRefAddr.getDefiningOp<cir::LoadOp>();
-  if (!loadOp)
-    return;
-
-  checkLambdaInitCaptureMove(storeOp, lambdaAddr, loadOp, lambdaCaptureAddr);
+  if (currScope->localValues.count(localByRefAddr))
+    getPmap()[lambdaAddr].insert(State::getLocalValue(localByRefAddr));
 }
 
 void LifetimeCheckPass::updatePointsToForConstRecord(mlir::Value addr,
@@ -1443,33 +1357,16 @@ void LifetimeCheckPass::checkStore(StoreOp storeOp) {
   // Check if storing a moved-from value
   checkMovedFromValue(storeOp);
 
-  // Handle coroutine tasks BEFORE the Value type reinitialization check
-  // Tasks need special tracking for dangling references
-  if (!ptrs.count(addr)) {
-    if (currScope->localTempTasks.count(storeOp.getValue())) {
-      checkCoroTaskStore(storeOp);
-      return;
-    }
-  }
-
-  // Handle reinitialization of Value types
-  if (getPmap().count(addr) && !owners.count(addr) && !ptrs.count(addr)) {
-    // Check if this value was previously moved-from
-    if (getPmap()[addr].count(State::getInvalid())) {
-      // Reinitialize: clear invalid state
-      getPmap()[addr].clear();
-      getPmap()[addr].insert(State::getLocalValue(addr));
-    }
-    return;
-  }
-
   // The bulk of the check is done on top of store to pointer categories,
   // which usually represent the most common case.
   //
-  // We handle some special local values, like lambdas,
+  // We handle some special local values, like coroutine tasks and lambdas,
   // which could be holding references to things with dangling lifetime.
   if (!ptrs.count(addr)) {
-    checkLambdaCaptureStore(storeOp);
+    if (currScope->localTempTasks.count(storeOp.getValue()))
+      checkCoroTaskStore(storeOp);
+    else
+      checkLambdaCaptureStore(storeOp);
     return;
   }
 
@@ -1793,7 +1690,7 @@ void LifetimeCheckPass::checkArgForRValueRef(
       checkPointerDeref(addr, callOp.getLoc());
       return;
     }
-    if (!shouldSkipMoveFromTemporary(addr))
+    if (!movesFromTemporary(addr))
       markOwnerAsMovedFrom(addr, callOp.getLoc());
     return;
   }
@@ -1804,7 +1701,7 @@ void LifetimeCheckPass::checkArgForRValueRef(
       checkPointerDeref(addr, callOp.getLoc());
       return;
     }
-    if (!shouldSkipMoveFromTemporary(addr))
+    if (!movesFromTemporary(addr))
       markPsetInvalid(addr, InvalidStyle::MovedFrom, callOp.getLoc());
     return;
   }
@@ -1815,7 +1712,7 @@ void LifetimeCheckPass::checkArgForRValueRef(
     return;
   }
 
-  if (!shouldSkipMoveFromTemporary(addr))
+  if (!movesFromTemporary(addr))
     markPsetInvalid(addr, InvalidStyle::MovedFrom, callOp.getLoc());
 }
 
@@ -2014,7 +1911,7 @@ void LifetimeCheckPass::checkMoveCtor(CallOp callOp, cir::CXXCtorAttr ctor) {
   auto addr = getThisParamOwnerCategory(callOp);
   if (addr && owners.count(src)) {
     // Don't mark temporaries as moved-from - they're about to be destroyed
-    if (!shouldSkipMoveFromTemporary(src))
+    if (!movesFromTemporary(src))
       markOwnerAsMovedFrom(src, callOp.getLoc());
     return;
   }
@@ -2023,7 +1920,7 @@ void LifetimeCheckPass::checkMoveCtor(CallOp callOp, cir::CXXCtorAttr ctor) {
   addr = getThisParamPointerCategory(callOp);
   if (addr && ptrs.count(src)) {
     // Don't mark temporaries as moved-from
-    if (!shouldSkipMoveFromTemporary(src))
+    if (!movesFromTemporary(src))
       markPsetInvalid(src, InvalidStyle::MovedFrom, callOp.getLoc());
     return;
   }
