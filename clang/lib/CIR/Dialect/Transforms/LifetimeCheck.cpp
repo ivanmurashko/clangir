@@ -2003,10 +2003,15 @@ bool LifetimeCheckPass::isLambdaType(mlir::Type ty) {
     return IsLambdaTyCache[ty];
 
   IsLambdaTyCache[ty] = false;
-  auto taskTy = mlir::dyn_cast<cir::RecordType>(ty);
-  if (!taskTy)
+  auto recordTy = mlir::dyn_cast<cir::RecordType>(ty);
+  if (!recordTy)
     return false;
-  if (taskTy.getAst().isLambda())
+
+  auto astAttr = recordTy.getAst();
+  if (!astAttr)
+    return false;
+
+  if (astAttr.isLambda())
     IsLambdaTyCache[ty] = true;
 
   return IsLambdaTyCache[ty];
@@ -2018,10 +2023,15 @@ bool LifetimeCheckPass::isTaskType(mlir::Value taskVal) {
     return IsTaskTyCache[ty];
 
   bool result = [&] {
-    auto taskTy = mlir::dyn_cast<cir::RecordType>(taskVal.getType());
-    if (!taskTy)
+    auto recordTy = mlir::dyn_cast<cir::RecordType>(taskVal.getType());
+    if (!recordTy)
       return false;
-    return taskTy.getAst().hasPromiseType();
+
+    auto astAttr = recordTy.getAst();
+    if (!astAttr)
+      return false;
+
+    return astAttr.hasPromiseType();
   }();
 
   IsTaskTyCache[ty] = result;
