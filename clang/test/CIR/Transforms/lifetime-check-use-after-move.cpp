@@ -171,6 +171,7 @@ void test_loop_with_move() {
   for (int i = 0; i < 3; i++) {
     if (i == 1) {
       consume_int(std::move(a)); // expected-note {{moved here via std::move or rvalue reference}}
+                                  // expected-warning@-1 {{use of moved-from value 'a'}}
     }
     if (i == 2) {
       int b = a; // expected-warning {{use of moved-from value 'a'}}
@@ -211,10 +212,10 @@ void test_move_in_declaration() {
   int c = a; // expected-warning {{use of moved-from value 'a'}}
 }
 
-// Test 22: Only first use warned
-void test_only_first_use_warned() {
+// Test 22: Warn at every use location (consistent with invalid pointer behavior)
+void test_warn_at_every_use() {
   int a = 10;
   consume_int(std::move(a)); // expected-note {{moved here via std::move or rvalue reference}}
   int b = a; // expected-warning {{use of moved-from value 'a'}}
-  int c = a; // NO warning (already warned once)
+  int c = a; // expected-warning {{use of moved-from value 'a'}}
 }

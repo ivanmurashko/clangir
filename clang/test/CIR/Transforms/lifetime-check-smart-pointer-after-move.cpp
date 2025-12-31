@@ -106,7 +106,7 @@ void test_unique_ptr_safe_operations() {
 // Test 2: Unsafe operations after move (unique_ptr)
 void test_unique_ptr_unsafe_operations() {
   std::unique_ptr<int> p(new int(42));
-  std::unique_ptr<int> q = std::move(p); // expected-note {{'nullptr' invalidated here}}
+  std::unique_ptr<int> q = std::move(p); // expected-note {{moved here via std::move or rvalue reference}}
 
   // Unsafe operations - should warn
   int x = *p; // expected-warning {{use of invalid pointer 'p'}}
@@ -115,7 +115,7 @@ void test_unique_ptr_unsafe_operations() {
 // Test 3: Unsafe arrow operator after move (unique_ptr)
 void test_unique_ptr_arrow_after_move() {
   std::unique_ptr<Data> p(new Data());
-  std::unique_ptr<Data> q = std::move(p); // expected-note {{'nullptr' invalidated here}}
+  std::unique_ptr<Data> q = std::move(p); // expected-note {{moved here via std::move or rvalue reference}}
 
   // Unsafe operation - should warn
   p->process(); // expected-warning {{use of invalid pointer 'p'}}
@@ -149,7 +149,7 @@ void test_shared_ptr_safe_operations() {
 // Test 6: Unsafe operations after move (shared_ptr)
 void test_shared_ptr_unsafe_operations() {
   std::shared_ptr<int> p(new int(42));
-  std::shared_ptr<int> q = std::move(p); // expected-note {{'nullptr' invalidated here}}
+  std::shared_ptr<int> q = std::move(p); // expected-note {{moved here via std::move or rvalue reference}}
 
   // Unsafe operations - should warn
   int x = *p; // expected-warning {{use of invalid pointer 'p'}}
@@ -158,7 +158,7 @@ void test_shared_ptr_unsafe_operations() {
 // Test 7: Unsafe arrow operator after move (shared_ptr)
 void test_shared_ptr_arrow_after_move() {
   std::shared_ptr<Data> p(new Data());
-  std::shared_ptr<Data> q = std::move(p); // expected-note {{'nullptr' invalidated here}}
+  std::shared_ptr<Data> q = std::move(p); // expected-note {{moved here via std::move or rvalue reference}}
 
   // Unsafe operation - should warn
   p->process(); // expected-warning {{use of invalid pointer 'p'}}
@@ -180,7 +180,7 @@ void test_unique_ptr_move_via_param() {
 // Test 9: Move via function parameter with unsafe use (unique_ptr)
 void test_unique_ptr_move_param_unsafe() {
   std::unique_ptr<int> p(new int(42));
-  consume_unique_ptr(std::move(p)); // expected-note {{'nullptr' invalidated here}}
+  consume_unique_ptr(std::move(p)); // expected-note {{moved here via std::move or rvalue reference}}
 
   // Unsafe after move
   int x = *p; // expected-warning {{use of invalid pointer 'p'}}
@@ -202,7 +202,7 @@ void test_multiple_safe_ops() {
 // Test 11: Safe then unsafe
 void test_safe_then_unsafe() {
   std::unique_ptr<int> p(new int(42));
-  std::unique_ptr<int> q = std::move(p); // expected-note {{'nullptr' invalidated here}}
+  std::unique_ptr<int> q = std::move(p); // expected-note {{moved here via std::move or rvalue reference}}
 
   int* raw = p.get();  // OK - safe operation
   int x = *p;           // expected-warning {{use of invalid pointer 'p'}}
@@ -212,7 +212,7 @@ void test_safe_then_unsafe() {
 void test_move_in_conditional(bool cond) {
   std::unique_ptr<int> p(new int(42));
   if (cond) {
-    std::unique_ptr<int> q = std::move(p); // expected-note {{'nullptr' invalidated here}}
+    std::unique_ptr<int> q = std::move(p); // expected-note {{moved here via std::move or rvalue reference}}
   }
   int* raw = p.get();  // OK - get() is safe even after conditional move
   int x = *p;           // expected-warning {{use of invalid pointer 'p'}}

@@ -106,6 +106,19 @@ let cppNamespace = "::cir" in {
             mangleCtx->mangleName(clang::GlobalDecl($_attr.getAst()), os);
           return out;
         }]
+      >,
+      InterfaceMethod<"", "unsigned", "getNumParams", (ins), [{}],
+        /*defaultImplementation=*/ [{
+          return $_attr.getAst()->getNumParams();
+        }]
+      >,
+      InterfaceMethod<"", "bool", "isParamRValueReference", (ins "unsigned":$paramIdx), [{}],
+        /*defaultImplementation=*/ [{
+          if (paramIdx >= $_attr.getAst()->getNumParams())
+            return false;
+          auto *param = $_attr.getAst()->getParamDecl(paramIdx);
+          return param->getType()->isRValueReferenceType();
+        }]
       >
     ];
   }
@@ -204,6 +217,16 @@ let cppNamespace = "::cir" in {
       InterfaceMethod<"", "bool", "isInStdNamespace", (ins), [{}],
         /*defaultImplementation=*/ [{
           return $_attr.getAst()->getDeclContext()->isStdNamespace();
+        }]
+      >,
+      InterfaceMethod<"", "bool", "isSmartPointerOwner", (ins), [{}],
+        /*defaultImplementation=*/ [{
+          if (!$_attr.getAst()->getDeclContext()->isStdNamespace())
+            return false;
+          // For template classes, getName() returns the template name (e.g., "unique_ptr")
+          // without template parameters, which is what we want
+          llvm::StringRef name = $_attr.getAst()->getName();
+          return name == "unique_ptr" || name == "shared_ptr";
         }]
       >,
       // Note: `getRawDecl` is useful for debugging because it allows dumping
