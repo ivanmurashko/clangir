@@ -832,6 +832,8 @@ mlir::LLVM::Linkage convertLinkage(cir::GlobalLinkageKind linkage) {
   using LLVM = mlir::LLVM::Linkage;
 
   switch (linkage) {
+  case CIR::AppendingLinkage:
+    return LLVM::Appending;
   case CIR::AvailableExternallyLinkage:
     return LLVM::AvailableExternally;
   case CIR::CommonLinkage:
