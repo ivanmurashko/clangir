@@ -798,13 +798,20 @@ mlir::Value CirAttrToValue::visitCirAttr(cir::GlobalViewAttr globalAttr) {
   }
 
   if (auto ptrTy = mlir::dyn_cast<cir::PointerType>(globalAttr.getType())) {
+    auto llvmDstTy = converter->convertType<mlir::LLVM::LLVMPointerType>(ptrTy);
+    unsigned dstAddrSpace = llvmDstTy.getAddressSpace();
+
+    // Check if address spaces differ - need addrspacecast
+    if (sourceAddrSpace != dstAddrSpace) {
+      return mlir::LLVM::AddrSpaceCastOp::create(rewriter, parentOp->getLoc(),
+                                                 llvmDstTy, addrOp);
+    }
     auto llvmEltTy =
         convertTypeForMemory(*converter, dataLayout, ptrTy.getPointee());
 
     if (llvmEltTy == sourceType)
       return addrOp;
 
-    auto llvmDstTy = converter->convertType(globalAttr.getType());
     return mlir::LLVM::BitcastOp::create(rewriter, parentOp->getLoc(),
                                          llvmDstTy, addrOp);
   }
