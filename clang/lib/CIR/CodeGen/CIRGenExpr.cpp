@@ -1884,6 +1884,31 @@ static Address emitArraySubscriptPtr(
   return Address(eltPtr, CGF.convertTypeForMem(eltType), eltAlign);
 }
 
+/// Generates lvalue for partial ext_vector access.
+Address CIRGenFunction::emitExtVectorElementLValue(LValue lv,
+                                                   mlir::Location loc) {
+  Address vectorAddress = lv.getExtVectorAddress();
+  QualType elementTy = lv.getType()->castAs<VectorType>()->getElementType();
+  mlir::Type vectorElementTy = CGM.getTypes().convertType(elementTy);
+  Address castToPointerElement =
+      vectorAddress.withElementType(builder, vectorElementTy);
+
+  mlir::ArrayAttr extVecElts = lv.getExtVectorElts();
+  unsigned idx = getAccessedFieldNo(0, extVecElts);
+  mlir::Value idxValue =
+      builder.getConstInt(loc, mlir::cast<cir::IntType>(PtrDiffTy), idx);
+
+  mlir::Value elementValue = builder.getArrayElement(
+      CGM.getTarget(), loc, loc, castToPointerElement.getPointer(),
+      vectorElementTy, idxValue,
+      /*shouldDecay=*/false);
+
+  const CharUnits eltSize = getContext().getTypeSizeInChars(elementTy);
+  const CharUnits alignment =
+      castToPointerElement.getAlignment().alignmentAtOffset(idx * eltSize);
+  return Address(elementValue, vectorElementTy, alignment);
+}
+
 LValue CIRGenFunction::emitArraySubscriptExpr(const ArraySubscriptExpr *E,
                                               bool Accessed) {
   // The index must always be an integer, which is not an aggregate.  Emit it
@@ -1916,7 +1941,7 @@ LValue CIRGenFunction::emitArraySubscriptExpr(const ArraySubscriptExpr *E,
 
   // If the base is a vector type, then we are forming a vector element
   // with this subscript.
-  if (E->getBase()->getType()->isVectorType() &&
+  if (E->getBase()->getType()->isSubscriptableVectorType() &&
       !isa<ExtVectorElementExpr>(E->getBase())) {
     LValue lhs = emitLValue(E->getBase());
     auto index = EmitIdxAfterBase(/*Promote=*/false);
@@ -1925,19 +1950,32 @@ LValue CIRGenFunction::emitArraySubscriptExpr(const ArraySubscriptExpr *E,
                                  lhs.getTBAAInfo());
   }
 
-  // All the other cases basically behave like simple offsetting.
-
-  // Handle the extvector case we ignored above.
-  if (isa<ExtVectorElementExpr>(E->getBase())) {
-    llvm_unreachable("extvector subscript is NYI");
+  // The HLSL runtime handle the subscript expression on global resource arrays.
+  if (getLangOpts().HLSL && (E->getType()->isHLSLResourceRecord() ||
+                             E->getType()->isHLSLResourceRecordArray())) {
+    llvm_unreachable("emitArraySubscriptExpr: HLSL");
   }
 
+  // All the other cases basically behave like simple offsetting.
   LValueBaseInfo EltBaseInfo;
   TBAAAccessInfo EltTBAAInfo;
 
   Address Addr = Address::invalid();
-  if (const VariableArrayType *vla =
-          getContext().getAsVariableArrayType(E->getType())) {
+
+  // Handle the extvector case we ignored above.
+  if (isa<ExtVectorElementExpr>(E->getBase())) {
+    mlir::Value Idx = EmitIdxAfterBase(/*Promote=*/true);
+    const LValue lv = emitLValue(E->getBase());
+    Addr = emitExtVectorElementLValue(lv, CGM.getLoc(E->getExprLoc()));
+
+    QualType ptrType = E->getBase()->getType();
+    Addr = emitArraySubscriptPtr(
+        *this, CGM.getLoc(E->getBeginLoc()), CGM.getLoc(E->getEndLoc()), Addr,
+        Idx, E->getType(), !getLangOpts().isSignedOverflowDefined(),
+        SignedIndices, CGM.getLoc(E->getExprLoc()), /*shouldDecay=*/false,
+        &ptrType, E->getBase());
+  } else if (const VariableArrayType *vla =
+                 getContext().getAsVariableArrayType(E->getType())) {
     // The base must be a pointer, which is not an aggregate.  Emit
     // it.  It needs to be emitted first in case it's what captures
     // the VLA bounds.

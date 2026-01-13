@@ -809,6 +809,8 @@ public:
   /// that we can just remove the code.
   bool ContainsLabel(const clang::Stmt *S, bool IgnoreCaseStmts = false);
 
+  Address emitExtVectorElementLValue(LValue lv, mlir::Location loc);
+
   class ConstantEmission {
     // Cannot use mlir::TypedAttr directly here because of bit availability.
     llvm::PointerIntPair<mlir::Attribute, 1, bool> ValueAndIsReference;
