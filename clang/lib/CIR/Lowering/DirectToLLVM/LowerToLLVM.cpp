@@ -4572,20 +4572,21 @@ mlir::LogicalResult CIRToLLVMCatchParamOpLowering::matchAndRewrite(
   return mlir::failure();
 }
 
-mlir::LogicalResult CIRToLLVMResumeOpLowering::matchAndRewrite(
-    cir::ResumeOp op, OpAdaptor adaptor,
+mlir::LogicalResult CIRToLLVMResumeFlatOpLowering::matchAndRewrite(
+    cir::ResumeFlatOp op, OpAdaptor adaptor,
     mlir::ConversionPatternRewriter &rewriter) const {
   // %lpad.val = insertvalue { ptr, i32 } poison, ptr %exception_ptr, 0
   // %lpad.val2 = insertvalue { ptr, i32 } %lpad.val, i32 %selector, 1
   // resume { ptr, i32 } %lpad.val2
-  SmallVector<int64_t> slotIdx = {0};
-  SmallVector<int64_t> selectorIdx = {1};
-  auto llvmLandingPadStructTy = getLLVMLandingPadStructTy(rewriter);
+  mlir::Type llvmLandingPadStructTy = getLLVMLandingPadStructTy(rewriter);
   mlir::Value poison = mlir::LLVM::PoisonOp::create(rewriter, op.getLoc(),
                                                     llvmLandingPadStructTy);
 
+  SmallVector<int64_t> slotIdx = {0};
   mlir::Value slot = mlir::LLVM::InsertValueOp::create(
       rewriter, op.getLoc(), poison, adaptor.getExceptionPtr(), slotIdx);
+
+  SmallVector<int64_t> selectorIdx = {1};
   mlir::Value selector = mlir::LLVM::InsertValueOp::create(
       rewriter, op.getLoc(), slot, adaptor.getTypeId(), selectorIdx);
 
@@ -4907,7 +4908,7 @@ void populateCIRToLLVMConversionPatterns(
       CIRToLLVMObjSizeOpLowering,
       CIRToLLVMPrefetchOpLowering,
       CIRToLLVMPtrDiffOpLowering,
-      CIRToLLVMResumeOpLowering,
+      CIRToLLVMResumeFlatOpLowering,
       CIRToLLVMReturnAddrOpLowering,
       CIRToLLVMRotateOpLowering,
       CIRToLLVMSelectOpLowering,

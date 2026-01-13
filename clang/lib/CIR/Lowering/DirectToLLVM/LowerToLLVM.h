@@ -1205,13 +1205,13 @@ public:
                   mlir::ConversionPatternRewriter &) const override;
 };
 
-class CIRToLLVMResumeOpLowering
-    : public mlir::OpConversionPattern<cir::ResumeOp> {
+class CIRToLLVMResumeFlatOpLowering
+    : public mlir::OpConversionPattern<cir::ResumeFlatOp> {
 public:
-  using mlir::OpConversionPattern<cir::ResumeOp>::OpConversionPattern;
+  using mlir::OpConversionPattern<cir::ResumeFlatOp>::OpConversionPattern;
 
   mlir::LogicalResult
-  matchAndRewrite(cir::ResumeOp op, OpAdaptor,
+  matchAndRewrite(cir::ResumeFlatOp op, OpAdaptor,
                   mlir::ConversionPatternRewriter &) const override;
 };
 

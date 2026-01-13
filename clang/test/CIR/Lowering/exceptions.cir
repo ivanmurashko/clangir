@@ -98,7 +98,7 @@ module @"try-catch.cpp" attributes {cir.lang = #cir.lang<cxx>, cir.sob = #cir.si
     // LLVM: %[[RES0:.*]] = insertvalue { ptr, i32 } poison, ptr %[[RESUME_EH]], 0
     // LLVM: %[[RES1:.*]] = insertvalue { ptr, i32 } %[[RES0]], i32 %[[RESUME_SEL]], 1
     // LLVM: resume { ptr, i32 } %[[RES1]]
-    cir.resume %38, %39
+    cir.resume.flat %38, %39
   ^bb10:
     %40 = cir.load %3 : !cir.ptr<!u64i>, !u64i
     cir.store %40, %0 : !u64i, !cir.ptr<!u64i>

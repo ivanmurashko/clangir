@@ -229,7 +229,7 @@ public:
     auto resume = dyn_cast<cir::ResumeOp>(unwindBlock->getTerminator());
     assert(resume && "expected 'cir.resume'");
     rewriter.setInsertionPointToEnd(unwindBlock);
-    rewriter.replaceOpWithNewOp<cir::ResumeOp>(
+    rewriter.replaceOpWithNewOp<cir::ResumeFlatOp>(
         resume, unwindBlock->getArgument(0), unwindBlock->getArgument(1));
   }
 
