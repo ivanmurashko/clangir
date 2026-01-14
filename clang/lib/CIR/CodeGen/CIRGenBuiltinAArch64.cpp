@@ -476,7 +476,7 @@ static const ARMVectorIntrinsicInfo AArch64SISDIntrinsicMap[] = {
     NEONMAP1(vmaxvq_f32, aarch64_neon_fmaxv, AddRetType | Add1ArgType),
     NEONMAP1(vmaxvq_f64, aarch64_neon_fmaxv, AddRetType | Add1ArgType),
     NEONMAP1(vmaxvq_s32, aarch64_neon_smaxv, AddRetType | Add1ArgType),
-    NEONMAP1(vmaxvq_u32, aarch64_neon_umaxv, AddRetType | Add1ArgType),
+    NEONMAP1(vmaxvq_u32, vector_reduce_umax, Add1ArgType),
     NEONMAP1(vminnmv_f32, aarch64_neon_fminnmv, AddRetType | Add1ArgType),
     NEONMAP1(vminnmvq_f32, aarch64_neon_fminnmv, AddRetType | Add1ArgType),
     NEONMAP1(vminnmvq_f64, aarch64_neon_fminnmv, AddRetType | Add1ArgType),
@@ -2698,6 +2698,17 @@ mlir::Value CIRGenFunction::emitCommonNeonBuiltinExpr(
                                                     : "aarch64.neon.srshl";
     break;
   }
+  case NEON::BI__builtin_neon_vrecpe_v:
+  case NEON::BI__builtin_neon_vrecpeq_v: {
+    // Use frecpe for floating point, urecpe for integer
+    mlir::Type elemTy = vTy.getElementType();
+    if (mlir::isa<cir::SingleType, cir::DoubleType, cir::FP16Type>(elemTy))
+      intrincsName = "aarch64.neon.frecpe";
+    else
+      intrincsName = "aarch64.neon.urecpe";
+    argTypes.push_back(vTy);
+    break;
+  }
   }
 
   if (intrincsName.empty())
@@ -2850,7 +2861,8 @@ static mlir::Value emitCommonNeonSISDBuiltinExpr(
   case NEON::BI__builtin_neon_vmaxvq_s32:
     llvm_unreachable(" neon_vmaxvq_s32 NYI ");
   case NEON::BI__builtin_neon_vmaxvq_u32:
-    llvm_unreachable(" neon_vmaxvq_u32 NYI ");
+    return emitNeonCall(builder, {argTy}, ops, "vector.reduce.umax", resultTy,
+                        loc);
   case NEON::BI__builtin_neon_vminnmv_f32:
   case NEON::BI__builtin_neon_vminnmvq_f32:
   case NEON::BI__builtin_neon_vminnmvq_f64:
@@ -4236,7 +4248,9 @@ CIRGenFunction::emitAArch64BuiltinExpr(unsigned BuiltinID, const CallExpr *E,
   }
   case NEON::BI__builtin_neon_vrndn_v:
   case NEON::BI__builtin_neon_vrndnq_v: {
-    llvm_unreachable("NEON::BI__builtin_neon_vrndnq_v NYI");
+    assert(!cir::MissingFeatures::emitConstrainedFPCall());
+    return emitNeonCallToOp<cir::RoundEvenOp>(builder, {ty}, Ops, std::nullopt,
+                                              ty, getLoc(E->getExprLoc()));
   }
   case NEON::BI__builtin_neon_vrndns_f32: {
     mlir::Value arg0 = emitScalarExpr(E->getArg(0));
@@ -4411,7 +4425,10 @@ CIRGenFunction::emitAArch64BuiltinExpr(unsigned BuiltinID, const CallExpr *E,
   }
   case NEON::BI__builtin_neon_vsqrt_v:
   case NEON::BI__builtin_neon_vsqrtq_v: {
-    llvm_unreachable("NEON::BI__builtin_neon_vsqrtq_v NYI");
+    assert(!cir::MissingFeatures::emitConstrainedFPCall());
+    Ops[0] = builder.createBitcast(Ops[0], ty);
+    return emitNeonCallToOp<cir::SqrtOp>(builder, {ty}, Ops, std::nullopt, ty,
+                                         getLoc(E->getExprLoc()));
   }
   case NEON::BI__builtin_neon_vrbit_v:
   case NEON::BI__builtin_neon_vrbitq_v: {

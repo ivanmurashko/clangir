@@ -10,6 +10,11 @@
 // RUN: | opt -S -passes=mem2reg,simplifycfg -o %t.ll
 // RUN: FileCheck --check-prefix=LLVM --input-file=%t.ll %s
 
+// RUN: %clang_cc1 -triple aarch64-none-linux-android24 -target-feature +neon \
+// RUN:  -disable-O0-optnone -flax-vector-conversions=none -emit-llvm -o - %s \
+// RUN: | opt -S -passes=mem2reg,simplifycfg -o %t-og.ll
+// RUN: FileCheck --check-prefix=OGCG --input-file=%t-og.ll %s
+
 // REQUIRES: aarch64-registered-target || arm-registered-target
 
 // This test file contains test cases for the intrinsics that are not covered
@@ -2184,4 +2189,121 @@ int8_t test_vmaxvq_u8(uint8x16_t a) {
   // LLVM-SAME: (<16 x i8> [[a:%.*]])
   // LLVM: [[res:%.*]] = call i8 @llvm.aarch64.neon.umaxv.i8.v16i8(<16 x i8> [[a]])
   // LLVM: ret i8 [[res]]
+}
+
+uint32_t test_vmaxvq_u32(uint32x4_t a) {
+  return vmaxvq_u32(a);
+
+  // CIR-LABEL: vmaxvq_u32
+  // CIR: cir.llvm.intrinsic "vector.reduce.umax" {{%.*}} : (!cir.vector<!u32i x 4>) -> !u32i
+
+  // LLVM-LABEL: @test_vmaxvq_u32
+  // LLVM: call i32 @llvm.vector.reduce.umax.v4i32
+
+  // OGCG-LABEL: @test_vmaxvq_u32
+  // OGCG: call i32 @llvm.vector.reduce.umax.v4i32
+}
+
+float32x2_t test_vsqrt_f32(float32x2_t a) {
+  return vsqrt_f32(a);
+
+  // CIR-LABEL: vsqrt_f32
+  // CIR: cir.sqrt {{%.*}} : !cir.vector<!cir.float x 2>
+
+  // LLVM-LABEL: @test_vsqrt_f32
+  // LLVM: call <2 x float> @llvm.sqrt.v2f32
+
+  // OGCG-LABEL: @test_vsqrt_f32
+  // OGCG: call <2 x float> @llvm.sqrt.v2f32
+}
+
+float32x4_t test_vsqrtq_f32(float32x4_t a) {
+  return vsqrtq_f32(a);
+
+  // CIR-LABEL: vsqrtq_f32
+  // CIR: cir.sqrt {{%.*}} : !cir.vector<!cir.float x 4>
+
+  // LLVM-LABEL: @test_vsqrtq_f32
+  // LLVM: call <4 x float> @llvm.sqrt.v4f32
+
+  // OGCG-LABEL: @test_vsqrtq_f32
+  // OGCG: call <4 x float> @llvm.sqrt.v4f32
+}
+
+float32x2_t test_vrndn_f32(float32x2_t a) {
+  return vrndn_f32(a);
+
+  // CIR-LABEL: vrndn_f32
+  // CIR: cir.roundeven {{%.*}} : !cir.vector<!cir.float x 2>
+
+  // LLVM-LABEL: @test_vrndn_f32
+  // LLVM: call <2 x float> @llvm.roundeven.v2f32
+
+  // OGCG-LABEL: @test_vrndn_f32
+  // OGCG: call <2 x float> @llvm.roundeven.v2f32
+}
+
+float32x4_t test_vrndnq_f32(float32x4_t a) {
+  return vrndnq_f32(a);
+
+  // CIR-LABEL: vrndnq_f32
+  // CIR: cir.roundeven {{%.*}} : !cir.vector<!cir.float x 4>
+
+  // LLVM-LABEL: @test_vrndnq_f32
+  // LLVM: call <4 x float> @llvm.roundeven.v4f32
+
+  // OGCG-LABEL: @test_vrndnq_f32
+  // OGCG: call <4 x float> @llvm.roundeven.v4f32
+}
+
+float32x2_t test_vrecpe_f32(float32x2_t a) {
+  return vrecpe_f32(a);
+
+  // CIR-LABEL: vrecpe_f32
+  // CIR: cir.llvm.intrinsic "aarch64.neon.frecpe" {{%.*}} : (!cir.vector<!cir.float x 2>) -> !cir.vector<!cir.float x 2>
+
+  // LLVM-LABEL: @test_vrecpe_f32
+  // LLVM: call <2 x float> @llvm.aarch64.neon.frecpe.v2f32
+
+  // OGCG-LABEL: @test_vrecpe_f32
+  // OGCG: call <2 x float> @llvm.aarch64.neon.frecpe.v2f32
+}
+
+float32x4_t test_vrecpeq_f32(float32x4_t a) {
+  return vrecpeq_f32(a);
+
+  // CIR-LABEL: vrecpeq_f32
+  // CIR: cir.llvm.intrinsic "aarch64.neon.frecpe" {{%.*}} : (!cir.vector<!cir.float x 4>) -> !cir.vector<!cir.float x 4>
+
+  // LLVM-LABEL: @test_vrecpeq_f32
+  // LLVM: call <4 x float> @llvm.aarch64.neon.frecpe.v4f32
+
+  // OGCG-LABEL: @test_vrecpeq_f32
+  // OGCG: call <4 x float> @llvm.aarch64.neon.frecpe.v4f32
+}
+
+uint32x2_t test_vrecpe_u32(uint32x2_t a) {
+  return vrecpe_u32(a);
+
+  // CIR-LABEL: vrecpe_u32
+  // CIR: cir.llvm.intrinsic "aarch64.neon.urecpe" {{%.*}} : (!cir.vector<!u32i x 2>) -> !cir.vector<!u32i x 2>
+
+  // LLVM-LABEL: @test_vrecpe_u32
+  // LLVM: call <2 x i32> @llvm.aarch64.neon.urecpe.v2i32
+
+  // OGCG-LABEL: @test_vrecpe_u32
+  // OGCG: call <2 x i32> @llvm.aarch64.neon.urecpe.v2i32
+}
+
+uint32x4_t test_vrecpeq_u32(uint32x4_t a) {
+  return vrecpeq_u32(a);
+
+  // CIR-LABEL: vrecpeq_u32
+  // CIR: cir.llvm.intrinsic "aarch64.neon.urecpe" {{%.*}} : (!cir.vector<!u32i x 4>) -> !cir.vector<!u32i x 4>
+
+  // LLVM-LABEL: @test_vrecpeq_u32
+  // LLVM: call <4 x i32> @llvm.aarch64.neon.urecpe.v4i32
+
+  // OGCG-LABEL: @test_vrecpeq_u32
+  // OGCG: call <4 x i32> @llvm.aarch64.neon.urecpe.v4i32
 }
