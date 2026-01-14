@@ -4858,19 +4858,117 @@ CIRGenFunction::emitAArch64BuiltinExpr(unsigned BuiltinID, const CallExpr *E,
   }
   case NEON::BI__builtin_neon_vst2_lane_v:
   case NEON::BI__builtin_neon_vst2q_lane_v: {
-    llvm_unreachable("NEON::BI__builtin_neon_vst2q_lane_v NYI");
+    // vst2_lane: Store 2 elements from specified lane to memory
+    // Intrinsic: @llvm.aarch64.neon.st2lane(vec0, vec1, lane, ptr)
+    mlir::Location loc = getLoc(E->getExprLoc());
+
+    // Ops layout after argument processing: [ptr, vec0, vec1, lane]
+    assert(Ops.size() >= 4 && "Expected at least 4 operands for vst2_lane");
+
+    // Bitcast the 2 vectors to vTy
+    mlir::Value vec0 = builder.createBitcast(Ops[1], vTy);
+    mlir::Value vec1 = builder.createBitcast(Ops[2], vTy);
+
+    // Extend lane index to i64
+    auto i64Ty = builder.getSInt64Ty();
+    mlir::Value lane = builder.createIntCast(Ops[3], i64Ty);
+
+    // Call intrinsic: st2lane(vec0, vec1, lane_i64, ptr)
+    llvm::SmallVector<mlir::Type> argTypes(4);
+    argTypes[0] = vec0.getType();
+    argTypes[1] = vec1.getType();
+    argTypes[2] = lane.getType();
+    argTypes[3] = Ops[0].getType();
+
+    llvm::SmallVector<mlir::Value> args = {vec0, vec1, lane, Ops[0]};
+
+    return emitNeonCall(builder, std::move(argTypes), args,
+                        "aarch64.neon.st2lane", builder.getVoidTy(), loc);
   }
   case NEON::BI__builtin_neon_vst3_v:
   case NEON::BI__builtin_neon_vst3q_v: {
-    llvm_unreachable("NEON::BI__builtin_neon_vst3q_v NYI");
+    // vst3: Store 3-element structure with interleaving
+    // Intrinsic: @llvm.aarch64.neon.st3(vec0, vec1, vec2, ptr)
+    mlir::Location loc = getLoc(E->getExprLoc());
+
+    // Ops layout after argument processing: [ptr, vec0, vec1, vec2]
+    assert(Ops.size() >= 4 && "Expected at least 4 operands for vst3");
+
+    // Bitcast vectors to vTy
+    mlir::Value vec0 = builder.createBitcast(Ops[1], vTy);
+    mlir::Value vec1 = builder.createBitcast(Ops[2], vTy);
+    mlir::Value vec2 = builder.createBitcast(Ops[3], vTy);
+
+    // Call intrinsic: st3(vec0, vec1, vec2, ptr)
+    llvm::SmallVector<mlir::Type> argTypes(4);
+    argTypes[0] = vec0.getType();
+    argTypes[1] = vec1.getType();
+    argTypes[2] = vec2.getType();
+    argTypes[3] = Ops[0].getType();
+
+    llvm::SmallVector<mlir::Value> args = {vec0, vec1, vec2, Ops[0]};
+
+    return emitNeonCall(builder, std::move(argTypes), args, "aarch64.neon.st3",
+                        builder.getVoidTy(), loc);
   }
   case NEON::BI__builtin_neon_vst3_lane_v:
   case NEON::BI__builtin_neon_vst3q_lane_v: {
-    llvm_unreachable("NEON::BI__builtin_neon_vst3q_lane_v NYI");
+    // vst3_lane: Store 3 elements from specified lane to memory
+    // Intrinsic: @llvm.aarch64.neon.st3lane(vec0, vec1, vec2, lane, ptr)
+    mlir::Location loc = getLoc(E->getExprLoc());
+
+    // Ops layout after argument processing: [ptr, vec0, vec1, vec2, lane]
+    assert(Ops.size() >= 5 && "Expected at least 5 operands for vst3_lane");
+
+    // Bitcast the 3 vectors to vTy
+    mlir::Value vec0 = builder.createBitcast(Ops[1], vTy);
+    mlir::Value vec1 = builder.createBitcast(Ops[2], vTy);
+    mlir::Value vec2 = builder.createBitcast(Ops[3], vTy);
+
+    // Extend lane index to i64
+    auto i64Ty = builder.getSInt64Ty();
+    mlir::Value lane = builder.createIntCast(Ops[4], i64Ty);
+
+    // Call intrinsic: st3lane(vec0, vec1, vec2, lane_i64, ptr)
+    llvm::SmallVector<mlir::Type> argTypes(5);
+    argTypes[0] = vec0.getType();
+    argTypes[1] = vec1.getType();
+    argTypes[2] = vec2.getType();
+    argTypes[3] = lane.getType();
+    argTypes[4] = Ops[0].getType();
+
+    llvm::SmallVector<mlir::Value> args = {vec0, vec1, vec2, lane, Ops[0]};
+
+    return emitNeonCall(builder, std::move(argTypes), args,
+                        "aarch64.neon.st3lane", builder.getVoidTy(), loc);
   }
   case NEON::BI__builtin_neon_vst4_v:
   case NEON::BI__builtin_neon_vst4q_v: {
-    llvm_unreachable("NEON::BI__builtin_neon_vst4q_v NYI");
+    // vst4: Store 4-element structure with interleaving
+    // Intrinsic: @llvm.aarch64.neon.st4(vec0, vec1, vec2, vec3, ptr)
+    mlir::Location loc = getLoc(E->getExprLoc());
+
+    // Ops layout after argument processing: [ptr, vec0, vec1, vec2, vec3]
+    assert(Ops.size() >= 5 && "Expected at least 5 operands for vst4");
+
+    // Bitcast vectors to vTy
+    mlir::Value vec0 = builder.createBitcast(Ops[1], vTy);
+    mlir::Value vec1 = builder.createBitcast(Ops[2], vTy);
+    mlir::Value vec2 = builder.createBitcast(Ops[3], vTy);
+    mlir::Value vec3 = builder.createBitcast(Ops[4], vTy);
+
+    // Call intrinsic: st4(vec0, vec1, vec2, vec3, ptr)
+    llvm::SmallVector<mlir::Type> argTypes(5);
+    argTypes[0] = vec0.getType();
+    argTypes[1] = vec1.getType();
+    argTypes[2] = vec2.getType();
+    argTypes[3] = vec3.getType();
+    argTypes[4] = Ops[0].getType();
+
+    llvm::SmallVector<mlir::Value> args = {vec0, vec1, vec2, vec3, Ops[0]};
+
+    return emitNeonCall(builder, std::move(argTypes), args, "aarch64.neon.st4",
+                        builder.getVoidTy(), loc);
   }
   case NEON::BI__builtin_neon_vst4_lane_v:
   case NEON::BI__builtin_neon_vst4q_lane_v: {
