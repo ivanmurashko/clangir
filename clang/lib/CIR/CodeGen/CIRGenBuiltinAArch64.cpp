@@ -1994,7 +1994,27 @@ static mlir::Value emitAArch64TblBuiltinExpr(CIRGenFunction &CGF,
     llvm_unreachable("NEON::BI__builtin_neon_vtbl3_v NYI");
   }
   case NEON::BI__builtin_neon_vtbl4_v: {
-    llvm_unreachable("NEON::BI__builtin_neon_vtbl4_v NYI");
+    // vtbl4: Table lookup from 4 tables
+    // Takes 4 x 64-bit tables and 64-bit indices
+    // Pairs tables into two 128-bit vectors, then calls tbl2
+    CIRGenBuilderTy &Builder = CGF.getBuilder();
+    mlir::Location Loc = CGF.getLoc(E->getExprLoc());
+
+    // Indices for merging two 8-element vectors into one 16-element vector
+    llvm::SmallVector<int64_t, 16> Indices = {0, 1, 2,  3,  4,  5,  6,  7,
+                                              8, 9, 10, 11, 12, 13, 14, 15};
+
+    // Merge first pair: Ops[0] + Ops[1] -> table1 (128-bit)
+    mlir::Value Table1 = Builder.createVecShuffle(Loc, Ops[0], Ops[1], Indices);
+
+    // Merge second pair: Ops[2] + Ops[3] -> table2 (128-bit)
+    mlir::Value Table2 = Builder.createVecShuffle(Loc, Ops[2], Ops[3], Indices);
+
+    // Call aarch64.neon.tbl2 intrinsic
+    llvm::SmallVector<mlir::Value, 3> Args = {Table1, Table2, Ops[4]};
+    cir::LLVMIntrinsicCallOp Op = cir::LLVMIntrinsicCallOp::create(
+        Builder, Loc, Builder.getStringAttr("aarch64.neon.tbl2"), Ty, Args);
+    return Op.getResult();
   }
   case NEON::BI__builtin_neon_vtbx1_v: {
     llvm_unreachable("NEON::BI__builtin_neon_vtbx1_v NYI");
