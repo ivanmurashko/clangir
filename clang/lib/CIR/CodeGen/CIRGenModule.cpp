@@ -1039,11 +1039,12 @@ void CIRGenModule::replaceGlobal(cir::GlobalOp oldSym, cir::GlobalOp newSym) {
           }
         } else if (auto c = dyn_cast<cir::ConstantOp>(userOp)) {
           mlir::Attribute init =
-              getNewInitValue(*this, newSym, oldTy, glob, c.getValue());
-          auto ar = cast<ConstArrayAttr>(init);
+              getNewInitValue(*this, newSym, oldTy, newSym, c.getValue());
+          auto typedAttr = mlir::cast<mlir::TypedAttr>(init);
           mlir::OpBuilder::InsertionGuard guard(builder);
           builder.setInsertionPointAfter(c);
-          auto newUser = cir::ConstantOp::create(builder, c.getLoc(), ar);
+          auto newUser =
+              cir::ConstantOp::create(builder, c.getLoc(), typedAttr);
           c.replaceAllUsesWith(newUser.getOperation());
         }
       }
@@ -3223,7 +3224,8 @@ void CIRGenModule::createFunctionTypeMetadataForIcall(const FunctionDecl *fd,
     return;
 
   // Use llvm_unreachable here (not assert MissingFeatures) because CFI is a
-  // security feature - silently not implementing it could lead to vulnerabilities.
+  // security feature - silently not implementing it could lead to
+  // vulnerabilities.
   llvm_unreachable("NYI: type metadata for CFI indirect call checking");
 }
 
@@ -3237,7 +3239,8 @@ void CIRGenModule::createIndirectFunctionTypeMD(const FunctionDecl *fd,
 
 void CIRGenModule::setKCFIType(const FunctionDecl *fd, cir::FuncOp func) {
   // Use llvm_unreachable (not assert MissingFeatures) because KCFI is a
-  // security feature - silently not implementing it could lead to vulnerabilities.
+  // security feature - silently not implementing it could lead to
+  // vulnerabilities.
   llvm_unreachable("NYI: KCFI type metadata");
 }
 
