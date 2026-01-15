@@ -2256,6 +2256,32 @@ float32x4_t test_vrndnq_f32(float32x4_t a) {
   // OGCG: call <4 x float> @llvm.roundeven.v4f32
 }
 
+float32x2_t test_vrnd_f32(float32x2_t a) {
+  return vrnd_f32(a);
+
+  // CIR-LABEL: vrnd_f32
+  // CIR: cir.trunc {{%.*}} : !cir.vector<!cir.float x 2>
+
+  // LLVM-LABEL: @test_vrnd_f32
+  // LLVM: call <2 x float> @llvm.trunc.v2f32
+
+  // OGCG-LABEL: @test_vrnd_f32
+  // OGCG: call <2 x float> @llvm.trunc.v2f32
+}
+
+float32x4_t test_vrndq_f32(float32x4_t a) {
+  return vrndq_f32(a);
+
+  // CIR-LABEL: vrndq_f32
+  // CIR: cir.trunc {{%.*}} : !cir.vector<!cir.float x 4>
+
+  // LLVM-LABEL: @test_vrndq_f32
+  // LLVM: call <4 x float> @llvm.trunc.v4f32
+
+  // OGCG-LABEL: @test_vrndq_f32
+  // OGCG: call <4 x float> @llvm.trunc.v4f32
+}
+
 float32x2_t test_vrecpe_f32(float32x2_t a) {
   return vrecpe_f32(a);
 

@@ -4383,7 +4383,10 @@ CIRGenFunction::emitAArch64BuiltinExpr(unsigned BuiltinID, const CallExpr *E,
   }
   case NEON::BI__builtin_neon_vrnd_v:
   case NEON::BI__builtin_neon_vrndq_v: {
-    llvm_unreachable("NEON::BI__builtin_neon_vrndq_v NYI");
+    assert(!cir::MissingFeatures::emitConstrainedFPCall());
+    Ops[0] = builder.createBitcast(Ops[0], ty);
+    return emitNeonCallToOp<cir::TruncOp>(builder, {ty}, Ops, std::nullopt, ty,
+                                          getLoc(E->getExprLoc()));
   }
   case NEON::BI__builtin_neon_vcvt_f64_v:
   case NEON::BI__builtin_neon_vcvtq_f64_v: {
