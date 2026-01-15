@@ -129,6 +129,9 @@ mlir::LLVM::ICmpPredicate convertCmpKindToICmpPredicate(cir::CmpOpKind kind,
     return (isSigned ? LLVMICmp::sgt : LLVMICmp::ugt);
   case CIR::ge:
     return (isSigned ? LLVMICmp::sge : LLVMICmp::uge);
+  case CIR::fone:
+  case CIR::funo:
+    llvm_unreachable("float-only predicate for integer comparison");
   }
   llvm_unreachable("Unknown CmpOpKind");
 }
@@ -151,6 +154,10 @@ mlir::LLVM::FCmpPredicate convertCmpKindToFCmpPredicate(cir::CmpOpKind kind) {
     return LLVMFCmp::ogt;
   case CIR::ge:
     return LLVMFCmp::oge;
+  case CIR::fone:
+    return LLVMFCmp::one;
+  case CIR::funo:
+    return LLVMFCmp::uno;
   }
   llvm_unreachable("Unknown CmpOpKind");
 }
@@ -2335,8 +2342,7 @@ void CIRToLLVMFuncOpLowering::lowerFuncAttributes(
         name == func.getFunctionTypeAttrName() ||
         name == getLinkageAttrNameString() ||
         name == func.getCallingConvAttrName() ||
-        name == func.getColdAttrName() ||
-        name == func.getOptNoneAttrName() ||
+        name == func.getColdAttrName() || name == func.getOptNoneAttrName() ||
         name == func.getDsoLocalAttrName() ||
         name == func.getInlineKindAttrName() ||
         (filterArgAndResAttrs && (name == func.getArgAttrsAttrName() ||

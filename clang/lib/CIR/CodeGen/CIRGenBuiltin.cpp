@@ -1592,8 +1592,42 @@ RValue CIRGenFunction::emitBuiltinExpr(const GlobalDecl GD, unsigned BuiltinID,
   case Builtin::BI__builtin_isless:
   case Builtin::BI__builtin_islessequal:
   case Builtin::BI__builtin_islessgreater:
-  case Builtin::BI__builtin_isunordered:
-    llvm_unreachable("BI__builtin_isgreater and BI__builtin_isless like NYI");
+  case Builtin::BI__builtin_isunordered: {
+    // Ordered comparisons: we know the arguments to these are matching scalar
+    // floating point values.
+    mlir::Value LHS = emitScalarExpr(E->getArg(0));
+    mlir::Value RHS = emitScalarExpr(E->getArg(1));
+    mlir::Location loc = getLoc(E->getExprLoc());
+
+    mlir::Value cmpResult;
+    switch (BuiltinID) {
+    default:
+      llvm_unreachable("Unknown ordered comparison");
+    case Builtin::BI__builtin_isgreater:
+      cmpResult = builder.createCompare(loc, cir::CmpOpKind::gt, LHS, RHS);
+      break;
+    case Builtin::BI__builtin_isgreaterequal:
+      cmpResult = builder.createCompare(loc, cir::CmpOpKind::ge, LHS, RHS);
+      break;
+    case Builtin::BI__builtin_isless:
+      cmpResult = builder.createCompare(loc, cir::CmpOpKind::lt, LHS, RHS);
+      break;
+    case Builtin::BI__builtin_islessequal:
+      cmpResult = builder.createCompare(loc, cir::CmpOpKind::le, LHS, RHS);
+      break;
+    case Builtin::BI__builtin_islessgreater:
+      // Ordered not-equal: returns true if neither is NaN and x != y
+      cmpResult = builder.createCompare(loc, cir::CmpOpKind::fone, LHS, RHS);
+      break;
+    case Builtin::BI__builtin_isunordered:
+      // Unordered: returns true if either x or y is NaN
+      cmpResult = builder.createCompare(loc, cir::CmpOpKind::funo, LHS, RHS);
+      break;
+    }
+    // ZExt bool to int type.
+    return RValue::get(
+        builder.createBoolToInt(cmpResult, convertType(E->getType())));
+  }
 
   case Builtin::BI__builtin_nondeterministic_value:
     llvm_unreachable("BI__builtin_nondeterministic_value NYI");

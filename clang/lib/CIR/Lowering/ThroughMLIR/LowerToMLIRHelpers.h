@@ -1,11 +1,11 @@
 #ifndef LLVM_CLANG_LIB_CIR_LOWERING_THROUGHMLIR_LOWERTOMLIRHELPERS_H
 #define LLVM_CLANG_LIB_CIR_LOWERING_THROUGHMLIR_LOWERTOMLIRHELPERS_H
 
-#include "clang/CIR/Dialect/IR/CIRDialect.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/Transforms/DialectConversion.h"
+#include "clang/CIR/Dialect/IR/CIRDialect.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/ErrorHandling.h"
 
@@ -64,6 +64,9 @@ convertCmpKindToCmpIPredicate(cir::CmpOpKind kind, bool isSigned) {
     return (isSigned ? arithCmpI::sgt : arithCmpI::ugt);
   case CIR::ge:
     return (isSigned ? arithCmpI::sge : arithCmpI::uge);
+  case CIR::fone:
+  case CIR::funo:
+    llvm_unreachable("float-only predicate for integer comparison");
   }
   llvm_unreachable("Unknown CmpOpKind");
 }
@@ -85,6 +88,10 @@ convertCmpKindToCmpFPredicate(cir::CmpOpKind kind) {
     return arithCmpF::OGT;
   case CIR::ge:
     return arithCmpF::OGE;
+  case CIR::fone:
+    return arithCmpF::ONE;
+  case CIR::funo:
+    return arithCmpF::UNO;
   }
   llvm_unreachable("Unknown CmpOpKind");
 }

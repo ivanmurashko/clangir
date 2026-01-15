@@ -1412,7 +1412,10 @@ def CIR_CmpOpKind : CIR_I32EnumAttr<"CmpOpKind", "compare operation kind", [
   I32EnumAttrCase<"gt", 2>,
   I32EnumAttrCase<"ge", 3>,
   I32EnumAttrCase<"eq", 4>,
-  I32EnumAttrCase<"ne", 5>
+  I32EnumAttrCase<"ne", 5>,
+  // Floating-point only predicates
+  I32EnumAttrCase<"fone", 6>,  // ordered and not equal
+  I32EnumAttrCase<"funo", 7>   // unordered (isnan(x) || isnan(y))
 ]>;
 
 // FIXME: Pure might not work when we add overloading.
@@ -1421,7 +1424,7 @@ def CIR_CmpOp : CIR_Op<"cmp", [Pure, SameTypeOperands]> {
   let description = [{
     `cir.cmp` compares two input operands of the same type and produces a
     `cir.bool` result. The kinds of comparison available are:
-    [lt,gt,ge,eq,ne]
+    [lt,le,gt,ge,eq,ne] for all types, and [fone,funo] for floating-point only.
 
     ```mlir
     %7 = cir.cmp(gt, %1, %2) : i32, !cir.bool
@@ -1439,6 +1442,8 @@ def CIR_CmpOp : CIR_Op<"cmp", [Pure, SameTypeOperands]> {
   let assemblyFormat = [{
     `(` $kind `,` $lhs `,` $rhs  `)` `:` type($lhs) `,` type($result) attr-dict
   }];
+
+  let hasVerifier = 1;
 }
 
 //===----------------------------------------------------------------------===//

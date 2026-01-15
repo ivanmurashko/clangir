@@ -2,6 +2,8 @@
 // RUN: %clang_cc1 -triple aarch64-apple-darwin-macho -fclangir -emit-cir -mmlir --mlir-print-ir-before=cir-lowering-prepare %s -o %t1.cir 2>&1 | FileCheck %s --check-prefix=AARCH64
 // RUN: %clang_cc1 -triple x86_64-unknown-linux-gnu -fclangir -emit-llvm -o %t.ll %s
 // RUN: FileCheck --input-file=%t.ll %s --check-prefix=LLVM
+// RUN: %clang_cc1 -triple x86_64-unknown-linux-gnu -emit-llvm -o %t.ll %s
+// RUN: FileCheck --input-file=%t.ll %s --check-prefix=OGCG
 
 // lround
 
@@ -1645,6 +1647,10 @@ float my_acosf(float f) {
   // LLVM: define dso_local float @my_acosf(float %0)
   // LLVM:   %{{.+}} = call float @llvm.acos.f32(float %{{.+}})
   // LLVM: }
+
+  // OGCG: define dso_local float @my_acosf(float {{.+}})
+  // OGCG:   %{{.+}} = call float @llvm.acos.f32(float %{{.+}})
+  // OGCG: }
 }
 
 double my_acos(double f) {
@@ -1655,6 +1661,10 @@ double my_acos(double f) {
   // LLVM: define dso_local double @my_acos(double %0)
   // LLVM:   %{{.+}} = call double @llvm.acos.f64(double %{{.+}})
   // LLVM: }
+
+  // OGCG: define dso_local double @my_acos(double {{.+}})
+  // OGCG:   %{{.+}} = call double @llvm.acos.f64(double %{{.+}})
+  // OGCG: }
 }
 
 // asin
@@ -1667,6 +1677,10 @@ float my_asinf(float f) {
   // LLVM: define dso_local float @my_asinf(float %0)
   // LLVM:   %{{.+}} = call float @llvm.asin.f32(float %{{.+}})
   // LLVM: }
+
+  // OGCG: define dso_local float @my_asinf(float {{.+}})
+  // OGCG:   %{{.+}} = call float @llvm.asin.f32(float %{{.+}})
+  // OGCG: }
 }
 
 double my_asin(double f) {
@@ -1677,6 +1691,10 @@ double my_asin(double f) {
   // LLVM: define dso_local double @my_asin(double %0)
   // LLVM:   %{{.+}} = call double @llvm.asin.f64(double %{{.+}})
   // LLVM: }
+
+  // OGCG: define dso_local double @my_asin(double {{.+}})
+  // OGCG:   %{{.+}} = call double @llvm.asin.f64(double %{{.+}})
+  // OGCG: }
 }
 
 // atan
@@ -1689,6 +1707,10 @@ float my_atanf(float f) {
   // LLVM: define dso_local float @my_atanf(float %0)
   // LLVM:   %{{.+}} = call float @llvm.atan.f32(float %{{.+}})
   // LLVM: }
+
+  // OGCG: define dso_local float @my_atanf(float {{.+}})
+  // OGCG:   %{{.+}} = call float @llvm.atan.f32(float %{{.+}})
+  // OGCG: }
 }
 
 double my_atan(double f) {
@@ -1699,6 +1721,10 @@ double my_atan(double f) {
   // LLVM: define dso_local double @my_atan(double %0)
   // LLVM:   %{{.+}} = call double @llvm.atan.f64(double %{{.+}})
   // LLVM: }
+
+  // OGCG: define dso_local double @my_atan(double {{.+}})
+  // OGCG:   %{{.+}} = call double @llvm.atan.f64(double %{{.+}})
+  // OGCG: }
 }
 
 // atan2
@@ -1711,6 +1737,10 @@ float my_atan2f(float y, float x) {
   // LLVM: define dso_local float @my_atan2f
   // LLVM:   %{{.+}} = call float @llvm.atan2.f32(float %{{.+}}, float %{{.+}})
   // LLVM: }
+
+  // OGCG: define dso_local float @my_atan2f
+  // OGCG:   %{{.+}} = call float @llvm.atan2.f32(float %{{.+}}, float %{{.+}})
+  // OGCG: }
 }
 
 double my_atan2(double y, double x) {
@@ -1721,4 +1751,122 @@ double my_atan2(double y, double x) {
   // LLVM: define dso_local double @my_atan2
   // LLVM:   %{{.+}} = call double @llvm.atan2.f64(double %{{.+}}, double %{{.+}})
   // LLVM: }
+
+  // OGCG: define dso_local double @my_atan2
+  // OGCG:   %{{.+}} = call double @llvm.atan2.f64(double %{{.+}}, double %{{.+}})
+  // OGCG: }
+}
+
+// isgreater
+
+int my_isgreater(double a, double b) {
+  return __builtin_isgreater(a, b);
+  // CHECK: cir.func {{.*}} @my_isgreater
+  // CHECK: %[[CMP:.+]] = cir.cmp(gt, %{{.+}}, %{{.+}}) : !cir.double, !cir.bool
+  // CHECK: {{.+}} = cir.cast bool_to_int %[[CMP]] : !cir.bool -> !s32i
+
+  // LLVM: define dso_local i32 @my_isgreater
+  // LLVM:   %{{.+}} = fcmp ogt double %{{.+}}, %{{.+}}
+  // LLVM:   %{{.+}} = zext i1 %{{.+}} to i32
+  // LLVM: }
+
+  // OGCG: define dso_local i32 @my_isgreater
+  // OGCG:   %{{.+}} = fcmp ogt double %{{.+}}, %{{.+}}
+  // OGCG:   %{{.+}} = zext i1 %{{.+}} to i32
+  // OGCG: }
+}
+
+// isgreaterequal
+
+int my_isgreaterequal(double a, double b) {
+  return __builtin_isgreaterequal(a, b);
+  // CHECK: cir.func {{.*}} @my_isgreaterequal
+  // CHECK: %[[CMP:.+]] = cir.cmp(ge, %{{.+}}, %{{.+}}) : !cir.double, !cir.bool
+  // CHECK: {{.+}} = cir.cast bool_to_int %[[CMP]] : !cir.bool -> !s32i
+
+  // LLVM: define dso_local i32 @my_isgreaterequal
+  // LLVM:   %{{.+}} = fcmp oge double %{{.+}}, %{{.+}}
+  // LLVM:   %{{.+}} = zext i1 %{{.+}} to i32
+  // LLVM: }
+
+  // OGCG: define dso_local i32 @my_isgreaterequal
+  // OGCG:   %{{.+}} = fcmp oge double %{{.+}}, %{{.+}}
+  // OGCG:   %{{.+}} = zext i1 %{{.+}} to i32
+  // OGCG: }
+}
+
+// isless
+
+int my_isless(double a, double b) {
+  return __builtin_isless(a, b);
+  // CHECK: cir.func {{.*}} @my_isless
+  // CHECK: %[[CMP:.+]] = cir.cmp(lt, %{{.+}}, %{{.+}}) : !cir.double, !cir.bool
+  // CHECK: {{.+}} = cir.cast bool_to_int %[[CMP]] : !cir.bool -> !s32i
+
+  // LLVM: define dso_local i32 @my_isless
+  // LLVM:   %{{.+}} = fcmp olt double %{{.+}}, %{{.+}}
+  // LLVM:   %{{.+}} = zext i1 %{{.+}} to i32
+  // LLVM: }
+
+  // OGCG: define dso_local i32 @my_isless
+  // OGCG:   %{{.+}} = fcmp olt double %{{.+}}, %{{.+}}
+  // OGCG:   %{{.+}} = zext i1 %{{.+}} to i32
+  // OGCG: }
+}
+
+// islessequal
+
+int my_islessequal(double a, double b) {
+  return __builtin_islessequal(a, b);
+  // CHECK: cir.func {{.*}} @my_islessequal
+  // CHECK: %[[CMP:.+]] = cir.cmp(le, %{{.+}}, %{{.+}}) : !cir.double, !cir.bool
+  // CHECK: {{.+}} = cir.cast bool_to_int %[[CMP]] : !cir.bool -> !s32i
+
+  // LLVM: define dso_local i32 @my_islessequal
+  // LLVM:   %{{.+}} = fcmp ole double %{{.+}}, %{{.+}}
+  // LLVM:   %{{.+}} = zext i1 %{{.+}} to i32
+  // LLVM: }
+
+  // OGCG: define dso_local i32 @my_islessequal
+  // OGCG:   %{{.+}} = fcmp ole double %{{.+}}, %{{.+}}
+  // OGCG:   %{{.+}} = zext i1 %{{.+}} to i32
+  // OGCG: }
+}
+
+// islessgreater
+
+int my_islessgreater(double a, double b) {
+  return __builtin_islessgreater(a, b);
+  // CHECK: cir.func {{.*}} @my_islessgreater
+  // CHECK: %[[CMP:.+]] = cir.cmp(fone, %{{.+}}, %{{.+}}) : !cir.double, !cir.bool
+  // CHECK: {{.+}} = cir.cast bool_to_int %[[CMP]] : !cir.bool -> !s32i
+
+  // LLVM: define dso_local i32 @my_islessgreater
+  // LLVM:   %{{.+}} = fcmp one double %{{.+}}, %{{.+}}
+  // LLVM:   %{{.+}} = zext i1 %{{.+}} to i32
+  // LLVM: }
+
+  // OGCG: define dso_local i32 @my_islessgreater
+  // OGCG:   %{{.+}} = fcmp one double %{{.+}}, %{{.+}}
+  // OGCG:   %{{.+}} = zext i1 %{{.+}} to i32
+  // OGCG: }
+}
+
+// isunordered
+
+int my_isunordered(double a, double b) {
+  return __builtin_isunordered(a, b);
+  // CHECK: cir.func {{.*}} @my_isunordered
+  // CHECK: %[[CMP:.+]] = cir.cmp(funo, %{{.+}}, %{{.+}}) : !cir.double, !cir.bool
+  // CHECK: {{.+}} = cir.cast bool_to_int %[[CMP]] : !cir.bool -> !s32i
+
+  // LLVM: define dso_local i32 @my_isunordered
+  // LLVM:   %{{.+}} = fcmp uno double %{{.+}}, %{{.+}}
+  // LLVM:   %{{.+}} = zext i1 %{{.+}} to i32
+  // LLVM: }
+
+  // OGCG: define dso_local i32 @my_isunordered
+  // OGCG:   %{{.+}} = fcmp uno double %{{.+}}, %{{.+}}
+  // OGCG:   %{{.+}} = zext i1 %{{.+}} to i32
+  // OGCG: }
 }

@@ -58,6 +58,16 @@ module {
     %40 = cir.cmp(le, %38, %39) : !cir.float, !cir.bool
     // CHECK: llvm.fcmp "ole"
 
+    // Float-only predicates
+    %43 = cir.load %2 : !cir.ptr<!cir.float>, !cir.float
+    %44 = cir.load %3 : !cir.ptr<!cir.float>, !cir.float
+    %45 = cir.cmp(fone, %43, %44) : !cir.float, !cir.bool
+    // CHECK: llvm.fcmp "one"
+    %46 = cir.load %2 : !cir.ptr<!cir.float>, !cir.float
+    %47 = cir.load %3 : !cir.ptr<!cir.float>, !cir.float
+    %48 = cir.cmp(funo, %46, %47) : !cir.float, !cir.bool
+    // CHECK: llvm.fcmp "uno"
+
     // Pointer comparisons.
     %41 = cir.cmp(ne, %0, %1) : !cir.ptr<!s32i>, !cir.bool
     // CHECK: llvm.icmp "ne"

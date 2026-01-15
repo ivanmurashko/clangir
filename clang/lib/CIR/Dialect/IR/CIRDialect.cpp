@@ -420,6 +420,22 @@ LogicalResult cir::ConditionOp::verify() {
 }
 
 //===----------------------------------------------------------------------===//
+// CmpOp
+//===----------------------------------------------------------------------===//
+
+LogicalResult cir::CmpOp::verify() {
+  auto kind = getKind();
+  if (kind == cir::CmpOpKind::fone || kind == cir::CmpOpKind::funo) {
+    if (!mlir::isa<cir::SingleType, cir::DoubleType, cir::LongDoubleType,
+                   cir::FP16Type, cir::FP80Type, cir::FP128Type, cir::BF16Type>(
+            getLhs().getType()))
+      return emitOpError("floating point comparison predicate 'fone'/'funo' "
+                         "requires floating point operands");
+  }
+  return success();
+}
+
+//===----------------------------------------------------------------------===//
 // ConstantOp
 //===----------------------------------------------------------------------===//
 
@@ -1375,6 +1391,21 @@ OpFoldResult cir::VecCmpOp::fold(FoldAdaptor adaptor) {
         cmpResult = mlir::cast<cir::FPAttr>(lhsAttr).getValue() !=
                     mlir::cast<cir::FPAttr>(rhsAttr).getValue();
       }
+      break;
+    }
+    case cir::CmpOpKind::fone: {
+      // Ordered not-equal: returns true if neither is NaN and values differ
+      assert(!isIntAttr && "fone is a float-only predicate");
+      auto lhsVal = mlir::cast<cir::FPAttr>(lhsAttr).getValue();
+      auto rhsVal = mlir::cast<cir::FPAttr>(rhsAttr).getValue();
+      cmpResult = !lhsVal.isNaN() && !rhsVal.isNaN() && lhsVal != rhsVal;
+      break;
+    }
+    case cir::CmpOpKind::funo: {
+      // Unordered: returns true if either value is NaN
+      assert(!isIntAttr && "funo is a float-only predicate");
+      cmpResult = mlir::cast<cir::FPAttr>(lhsAttr).getValue().isNaN() ||
+                  mlir::cast<cir::FPAttr>(rhsAttr).getValue().isNaN();
       break;
     }
     }
