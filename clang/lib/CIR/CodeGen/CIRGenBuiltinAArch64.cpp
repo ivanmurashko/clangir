@@ -4662,22 +4662,29 @@ CIRGenFunction::emitAArch64BuiltinExpr(unsigned BuiltinID, const CallExpr *E,
   }
   case NEON::BI__builtin_neon_vsri_n_v:
   case NEON::BI__builtin_neon_vsriq_n_v: {
-    // vsri_n: Shift right and insert
-    // Intrinsic: @llvm.aarch64.neon.vsri(input_vec, source_vec, shift_imm)
     mlir::Location loc = getLoc(E->getExprLoc());
 
-    // Ops layout: [input_vector, source_vector, shift_immediate]
-    llvm::SmallVector<mlir::Type> argTypes(3);
-    argTypes[0] = Ops[0].getType();
-    argTypes[1] = Ops[1].getType();
-    argTypes[2] = Ops[2].getType();
+    // Bitcast operands to actual vector type
+    Ops[0] = builder.createBitcast(Ops[0], vTy);
+    Ops[1] = builder.createBitcast(Ops[1], vTy);
+
+    llvm::SmallVector<mlir::Type> argTypes = {vTy, vTy, Ops[2].getType()};
 
     return emitNeonCall(builder, std::move(argTypes), Ops, "aarch64.neon.vsri",
                         vTy, loc);
   }
   case NEON::BI__builtin_neon_vsli_n_v:
   case NEON::BI__builtin_neon_vsliq_n_v: {
-    llvm_unreachable("NEON::BI__builtin_neon_vsliq_n_v NYI");
+    mlir::Location loc = getLoc(E->getExprLoc());
+
+    // Bitcast operands to actual vector type
+    Ops[0] = builder.createBitcast(Ops[0], vTy);
+    Ops[1] = builder.createBitcast(Ops[1], vTy);
+
+    llvm::SmallVector<mlir::Type> argTypes = {vTy, vTy, Ops[2].getType()};
+
+    return emitNeonCall(builder, std::move(argTypes), Ops, "aarch64.neon.vsli",
+                        vTy, loc);
   }
   case NEON::BI__builtin_neon_vsra_n_v:
   case NEON::BI__builtin_neon_vsraq_n_v: {

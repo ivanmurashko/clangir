@@ -2437,3 +2437,55 @@ uint32x2x2_t test_vld1_u32_x2(uint32_t const *ptr) {
   // OGCG-LABEL: @test_vld1_u32_x2
   // OGCG: call { <2 x i32>, <2 x i32> } @llvm.aarch64.neon.ld1x2.v2i32.p0
 }
+
+uint32x4_t test_vsliq_n_u32(uint32x4_t a, uint32x4_t b) {
+  return vsliq_n_u32(a, b, 1);
+
+  // CIR-LABEL: vsliq_n_u32
+  // CIR: cir.llvm.intrinsic "aarch64.neon.vsli"
+
+  // LLVM-LABEL: @test_vsliq_n_u32
+  // LLVM: call <4 x i32> @llvm.aarch64.neon.vsli.v4i32(<4 x i32> {{%.*}}, <4 x i32> {{%.*}}, i32 1)
+
+  // OGCG-LABEL: @test_vsliq_n_u32
+  // OGCG: call <4 x i32> @llvm.aarch64.neon.vsli.v4i32(<4 x i32> {{%.*}}, <4 x i32> {{%.*}}, i32 1)
+}
+
+uint8x8_t test_vsli_n_u8(uint8x8_t a, uint8x8_t b) {
+  return vsli_n_u8(a, b, 1);
+
+  // CIR-LABEL: vsli_n_u8
+  // CIR: cir.llvm.intrinsic "aarch64.neon.vsli"
+
+  // LLVM-LABEL: @test_vsli_n_u8
+  // LLVM: call <8 x i8> @llvm.aarch64.neon.vsli.v8i8(<8 x i8> {{%.*}}, <8 x i8> {{%.*}}, i32 1)
+
+  // OGCG-LABEL: @test_vsli_n_u8
+  // OGCG: call <8 x i8> @llvm.aarch64.neon.vsli.v8i8(<8 x i8> {{%.*}}, <8 x i8> {{%.*}}, i32 1)
+}
+
+uint32x4_t test_vsriq_n_u32(uint32x4_t a, uint32x4_t b) {
+  return vsriq_n_u32(a, b, 1);
+
+  // CIR-LABEL: vsriq_n_u32
+  // CIR: cir.llvm.intrinsic "aarch64.neon.vsri"
+
+  // LLVM-LABEL: @test_vsriq_n_u32
+  // LLVM: call <4 x i32> @llvm.aarch64.neon.vsri.v4i32(<4 x i32> {{%.*}}, <4 x i32> {{%.*}}, i32 1)
+
+  // OGCG-LABEL: @test_vsriq_n_u32
+  // OGCG: call <4 x i32> @llvm.aarch64.neon.vsri.v4i32(<4 x i32> {{%.*}}, <4 x i32> {{%.*}}, i32 1)
+}
+
+uint8x8_t test_vsri_n_u8(uint8x8_t a, uint8x8_t b) {
+  return vsri_n_u8(a, b, 1);
+
+  // CIR-LABEL: vsri_n_u8
+  // CIR: cir.llvm.intrinsic "aarch64.neon.vsri"
+
+  // LLVM-LABEL: @test_vsri_n_u8
+  // LLVM: call <8 x i8> @llvm.aarch64.neon.vsri.v8i8(<8 x i8> {{%.*}}, <8 x i8> {{%.*}}, i32 1)
+
+  // OGCG-LABEL: @test_vsri_n_u8
+  // OGCG: call <8 x i8> @llvm.aarch64.neon.vsri.v8i8(<8 x i8> {{%.*}}, <8 x i8> {{%.*}}, i32 1)
+}
