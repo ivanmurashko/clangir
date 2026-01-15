@@ -2489,3 +2489,19 @@ uint8x8_t test_vsri_n_u8(uint8x8_t a, uint8x8_t b) {
   // OGCG-LABEL: @test_vsri_n_u8
   // OGCG: call <8 x i8> @llvm.aarch64.neon.vsri.v8i8(<8 x i8> {{%.*}}, <8 x i8> {{%.*}}, i32 1)
 }
+
+float32x4_t test_vfmaq_laneq_f32(float32x4_t a, float32x4_t b, float32x4_t v) {
+  return vfmaq_laneq_f32(a, b, v, 1);
+
+  // CIR-LABEL: vfmaq_laneq_f32
+  // CIR: %[[SPLAT:.*]] = cir.vec.shuffle({{%.*}}, {{%.*}} : !cir.vector<!cir.float x 4>) [#cir.int<1> : !s32i, #cir.int<1> : !s32i, #cir.int<1> : !s32i, #cir.int<1> : !s32i]
+  // CIR: cir.llvm.intrinsic "fma" %[[SPLAT]], {{%.*}}, {{%.*}} :
+
+  // LLVM-LABEL: @test_vfmaq_laneq_f32
+  // LLVM: %[[SPLAT:.*]] = shufflevector <4 x float> {{%.*}}, <4 x float> poison, <4 x i32> <i32 1, i32 1, i32 1, i32 1>
+  // LLVM: call <4 x float> @llvm.fma.v4f32(<4 x float> %[[SPLAT]], <4 x float> {{%.*}}, <4 x float> {{%.*}})
+
+  // OGCG-LABEL: @test_vfmaq_laneq_f32
+  // OGCG: %[[SPLAT:.*]] = shufflevector <4 x float> {{%.*}}, <4 x float> {{%.*}}, <4 x i32> <i32 1, i32 1, i32 1, i32 1>
+  // OGCG: call <4 x float> @llvm.fma.v4f32(<4 x float> %[[SPLAT]], <4 x float> {{%.*}}, <4 x float> {{%.*}})
+}

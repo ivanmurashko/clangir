@@ -4132,7 +4132,23 @@ CIRGenFunction::emitAArch64BuiltinExpr(unsigned BuiltinID, const CallExpr *E,
     llvm_unreachable("NEON::BI__builtin_neon_vfma_laneq_v NYI");
   }
   case NEON::BI__builtin_neon_vfmaq_laneq_v: {
-    llvm_unreachable("NEON::BI__builtin_neon_vfmaq_laneq_v NYI");
+    mlir::Location loc = getLoc(E->getExprLoc());
+
+    // Bitcast all operands to actual vector type
+    Ops[0] = builder.createBitcast(Ops[0], vTy);
+    Ops[1] = builder.createBitcast(Ops[1], vTy);
+    Ops[2] = builder.createBitcast(Ops[2], vTy);
+
+    // Splat the lane from Ops[2] using lane index Ops[3]
+    Ops[2] = emitNeonSplat(builder, loc, Ops[2], Ops[3], vTy.getSize());
+
+    // fma intrinsic order: (multiplicand1, multiplicand2, addend)
+    // NEON order: (addend, multiplicand1, lane_vector) -> (Ops[0], Ops[1],
+    // Ops[2]) After splat, Ops[2] is the splatted lane vector fma(Ops[2],
+    // Ops[1], Ops[0]) = (v_lane * b) + a
+    llvm::SmallVector<mlir::Value> fmaOps = {Ops[2], Ops[1], Ops[0]};
+    llvm::SmallVector<mlir::Type> argTypes = {vTy, vTy, vTy};
+    return emitNeonCall(builder, std::move(argTypes), fmaOps, "fma", vTy, loc);
   }
   case NEON::BI__builtin_neon_vfmah_lane_f16:
   case NEON::BI__builtin_neon_vfmas_lane_f32:
