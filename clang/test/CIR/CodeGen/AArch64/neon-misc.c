@@ -2359,3 +2359,81 @@ void test_vst3q_lane_u32(uint32_t *a, uint32x4x3_t b) {
   // OGCG-LABEL: @test_vst3q_lane_u32
   // OGCG: call void @llvm.aarch64.neon.st3lane.v4i32.p0
 }
+
+uint32x4x4_t test_vld1q_u32_x4(uint32_t const *ptr) {
+  return vld1q_u32_x4(ptr);
+
+  // CIR-LABEL: vld1q_u32_x4
+  // CIR: cir.llvm.intrinsic "aarch64.neon.ld1x4"
+
+  // LLVM-LABEL: @test_vld1q_u32_x4
+  // LLVM: call { <4 x i32>, <4 x i32>, <4 x i32>, <4 x i32> } @llvm.aarch64.neon.ld1x4.v4i32.p0
+
+  // OGCG-LABEL: @test_vld1q_u32_x4
+  // OGCG: call { <4 x i32>, <4 x i32>, <4 x i32>, <4 x i32> } @llvm.aarch64.neon.ld1x4.v4i32.p0
+}
+
+uint32x2x4_t test_vld1_u32_x4(uint32_t const *ptr) {
+  return vld1_u32_x4(ptr);
+
+  // CIR-LABEL: vld1_u32_x4
+  // CIR: cir.llvm.intrinsic "aarch64.neon.ld1x4"
+
+  // LLVM-LABEL: @test_vld1_u32_x4
+  // LLVM: call { <2 x i32>, <2 x i32>, <2 x i32>, <2 x i32> } @llvm.aarch64.neon.ld1x4.v2i32.p0
+
+  // OGCG-LABEL: @test_vld1_u32_x4
+  // OGCG: call { <2 x i32>, <2 x i32>, <2 x i32>, <2 x i32> } @llvm.aarch64.neon.ld1x4.v2i32.p0
+}
+
+uint32x4x3_t test_vld1q_u32_x3(uint32_t const *ptr) {
+  return vld1q_u32_x3(ptr);
+
+  // CIR-LABEL: vld1q_u32_x3
+  // CIR: cir.llvm.intrinsic "aarch64.neon.ld1x3"
+
+  // LLVM-LABEL: @test_vld1q_u32_x3
+  // LLVM: call { <4 x i32>, <4 x i32>, <4 x i32> } @llvm.aarch64.neon.ld1x3.v4i32.p0
+
+  // OGCG-LABEL: @test_vld1q_u32_x3
+  // OGCG: call { <4 x i32>, <4 x i32>, <4 x i32> } @llvm.aarch64.neon.ld1x3.v4i32.p0
+}
+
+uint32x2x3_t test_vld1_u32_x3(uint32_t const *ptr) {
+  return vld1_u32_x3(ptr);
+
+  // CIR-LABEL: vld1_u32_x3
+  // CIR: cir.llvm.intrinsic "aarch64.neon.ld1x3"
+
+  // LLVM-LABEL: @test_vld1_u32_x3
+  // LLVM: call { <2 x i32>, <2 x i32>, <2 x i32> } @llvm.aarch64.neon.ld1x3.v2i32.p0
+
+  // OGCG-LABEL: @test_vld1_u32_x3
+  // OGCG: call { <2 x i32>, <2 x i32>, <2 x i32> } @llvm.aarch64.neon.ld1x3.v2i32.p0
+}
+
+uint32x4x2_t test_vld1q_u32_x2(uint32_t const *ptr) {
+  return vld1q_u32_x2(ptr);
+
+  // CIR-LABEL: vld1q_u32_x2
+  // CIR: cir.llvm.intrinsic "aarch64.neon.ld1x2"
+
+  // LLVM-LABEL: @test_vld1q_u32_x2
+  // LLVM: call { <4 x i32>, <4 x i32> } @llvm.aarch64.neon.ld1x2.v4i32.p0
+
+  // OGCG-LABEL: @test_vld1q_u32_x2
+  // OGCG: call { <4 x i32>, <4 x i32> } @llvm.aarch64.neon.ld1x2.v4i32.p0
+}
+
+uint32x2x2_t test_vld1_u32_x2(uint32_t const *ptr) {
+  return vld1_u32_x2(ptr);
+
+  // CIR-LABEL: vld1_u32_x2
+  // CIR: cir.llvm.intrinsic "aarch64.neon.ld1x2"
+
+  // LLVM-LABEL: @test_vld1_u32_x2
+  // LLVM: call { <2 x i32>, <2 x i32> } @llvm.aarch64.neon.ld1x2.v2i32.p0
+
+  // OGCG-LABEL: @test_vld1_u32_x2
+  // OGCG: call { <2 x i32>, <2 x i32> } @llvm.aarch64.neon.ld1x2.v2i32.p0
+}
