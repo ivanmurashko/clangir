@@ -12,6 +12,7 @@
 #include "clang/CIR/Dialect/IR/CIRTypes.h"
 #include "clang/CIR/MissingFeatures.h"
 #include "clang/CIR/Target/x86.h"
+#include "llvm/ADT/TypeSwitch.h"
 
 using namespace clang;
 using namespace clang::CIRGen;
@@ -373,6 +374,10 @@ public:
 
   cir::ABIArgInfo classifyReturnType(QualType retTy) const;
   cir::ABIArgInfo classifyArgumentType(QualType ty) const;
+
+  cir::VectorType
+  getOptimalVectorMemoryType(cir::VectorType T,
+                             const clang::LangOptions &Opt) const override;
 };
 
 class AMDGPUTargetCIRGenInfo : public TargetCIRGenInfo {
@@ -588,6 +593,23 @@ cir::ABIArgInfo AMDGPUABIInfo::classifyReturnType(QualType retTy) const {
 
 cir::ABIArgInfo AMDGPUABIInfo::classifyArgumentType(QualType ty) const {
   llvm_unreachable("not yet implemented");
+}
+
+cir::VectorType
+AMDGPUABIInfo::getOptimalVectorMemoryType(cir::VectorType T,
+                                          const clang::LangOptions &Opt) const {
+  if (T.getSize() == 3) {
+    unsigned elemBits =
+        llvm::TypeSwitch<mlir::Type, unsigned>(T.getElementType())
+            .Case<cir::IntType>([](cir::IntType ty) { return ty.getWidth(); })
+            .Case<cir::SingleType>([](auto) { return 32u; })
+            .Case<cir::DoubleType>([](auto) { return 64u; })
+            .Default([](auto) { return 0u; });
+
+    if (elemBits == 32)
+      return T;
+  }
+  return ABIInfo::getOptimalVectorMemoryType(T, Opt);
 }
 
 ABIInfo::~ABIInfo() {}
