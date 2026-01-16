@@ -325,6 +325,21 @@ LValue CIRGenFunction::emitLValueForField(LValue base, const FieldDecl *field) {
   if (field->isBitField())
     return emitLValueForBitField(base, field);
 
+  // Zero-size fields (zero-length bitfields or [[no_unique_address]] empty
+  // fields) are not in the CIR layout, so we need to handle them specially.
+  // Note: CIR uses isZeroSize() in CIRRecordLayoutBuilder::accumulateFields(),
+  // which differs from OG's isEmptyFieldForLayout().
+  if (field->isZeroSize(getContext())) {
+    // Zero-size fields don't occupy space, so just return an LValue pointing
+    // to the base address with the field's type.
+    Address addr = base.getAddress();
+    QualType FieldType = field->getType();
+    AlignmentSource BaseAlignSource = BaseInfo.getAlignmentSource();
+    LValueBaseInfo FieldBaseInfo(getFieldAlignmentSource(BaseAlignSource));
+    return makeAddrLValue(addr, FieldType, FieldBaseInfo,
+                          TBAAAccessInfo::getMayAliasInfo());
+  }
+
   // Fields of may-alias structures are may-alais themselves.
   // FIXME: this hould get propagated down through anonymous structs and unions.
   QualType FieldType = field->getType();
