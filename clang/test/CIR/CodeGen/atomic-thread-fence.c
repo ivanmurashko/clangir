@@ -2,6 +2,8 @@
 // RUN: FileCheck --check-prefix=CIR --input-file=%t.cir %s
 // RUN: %clang_cc1 -triple x86_64-unknown-linux-gnu -fclangir -emit-llvm %s -o %t.ll
 // RUN: FileCheck --check-prefix=LLVM --input-file=%t.ll %s
+// RUN: %clang_cc1 -triple x86_64-unknown-linux-gnu -emit-llvm %s -o %t-og.ll
+// RUN: FileCheck --check-prefix=OGCG --input-file=%t-og.ll %s
 
 
 struct Data {
@@ -133,3 +135,50 @@ void loadWithSignalFence(DataPtr d) {
 // LLVM:    store i64 %[[ATOMIC_LOAD]], ptr %[[DATA_TEMP]], align 8
 // LLVM:    %[[DATA_TEMP_LOAD]] = load ptr, ptr %[[DATA_TEMP]], align 8
 // LLVM:    ret void
+
+// Test C11 atomic fence variants
+void applyC11ThreadFence() {
+  __c11_atomic_thread_fence(__ATOMIC_SEQ_CST);
+}
+// CIR-LABEL: @applyC11ThreadFence
+// CIR:   cir.atomic.fence syncscope(system) seq_cst
+// CIR:   cir.return
+
+// LLVM-LABEL: @applyC11ThreadFence
+// LLVM:    fence seq_cst
+// LLVM:    ret void
+
+// OGCG-LABEL: @applyC11ThreadFence
+// OGCG:    fence seq_cst
+// OGCG:    ret void
+
+void applyC11SignalFence() {
+  __c11_atomic_signal_fence(__ATOMIC_SEQ_CST);
+}
+// CIR-LABEL: @applyC11SignalFence
+// CIR:   cir.atomic.fence syncscope(single_thread) seq_cst
+// CIR:   cir.return
+
+// LLVM-LABEL: @applyC11SignalFence
+// LLVM:    fence syncscope("singlethread") seq_cst
+// LLVM:    ret void
+
+// OGCG-LABEL: @applyC11SignalFence
+// OGCG:    fence syncscope("singlethread") seq_cst
+// OGCG:    ret void
+
+// Test __sync_synchronize (GCC builtin)
+void applySyncSynchronize() {
+  __sync_synchronize();
+}
+// CIR-LABEL: @applySyncSynchronize
+// CIR:   cir.atomic.fence syncscope(system) seq_cst
+// CIR:   cir.return
+
+// LLVM-LABEL: @applySyncSynchronize
+// LLVM:    fence seq_cst
+// LLVM:    ret void
+
+// OGCG-LABEL: @applySyncSynchronize
+// OGCG:    fence seq_cst
+// OGCG:    ret void

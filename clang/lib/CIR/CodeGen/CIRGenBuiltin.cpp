@@ -2225,8 +2225,16 @@ RValue CIRGenFunction::emitBuiltinExpr(const GlobalDecl GD, unsigned BuiltinID,
     return RValue::get(nullptr);
   }
 
-  case Builtin::BI__sync_synchronize:
-    llvm_unreachable("BI__sync_synchronize NYI");
+  case Builtin::BI__sync_synchronize: {
+    // __sync_synchronize is a seq_cst fence with system sync scope
+    // It takes no arguments (unlike __atomic_thread_fence)
+    cir::AtomicFence::create(
+        builder, getLoc(E->getSourceRange()),
+        cir::MemOrder::SequentiallyConsistent,
+        cir::SyncScopeKindAttr::get(&getMLIRContext(),
+                                    cir::SyncScopeKind::System));
+    return RValue::get(nullptr);
+  }
 
   case Builtin::BI__builtin_nontemporal_load:
     return RValue::get(emitNontemporalLoad(*this, E));
@@ -2244,14 +2252,13 @@ RValue CIRGenFunction::emitBuiltinExpr(const GlobalDecl GD, unsigned BuiltinID,
     llvm_unreachable("BI__atomic_clear NYI");
 
   case Builtin::BI__atomic_thread_fence:
+  case Builtin::BI__c11_atomic_thread_fence:
     return RValue::get(
         makeAtomicFenceValue(*this, E, cir::SyncScopeKind::System));
   case Builtin::BI__atomic_signal_fence:
+  case Builtin::BI__c11_atomic_signal_fence:
     return RValue::get(
         makeAtomicFenceValue(*this, E, cir::SyncScopeKind::SingleThread));
-  case Builtin::BI__c11_atomic_thread_fence:
-  case Builtin::BI__c11_atomic_signal_fence:
-    llvm_unreachable("BI__c11_atomic_thread_fence like NYI");
 
   case Builtin::BI__builtin_signbit:
   case Builtin::BI__builtin_signbitf:
