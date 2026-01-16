@@ -1742,8 +1742,20 @@ void LoweringPreparePass::lowerTrivialConstructorCall(cir::CallOp op) {
   auto ctorDecl = dyn_cast<cir::ASTCXXConstructorDeclInterface>(astAttr);
   if (!ctorDecl)
     return;
-  if (ctorDecl.isDefaultConstructor())
+
+  // Handle trivial default constructors - they do nothing, so delete the call.
+  // This matches OG behavior which skips emitting these calls entirely.
+  // However, don't delete if the call is inside an ArrayCtor/ArrayDtor region,
+  // as those operations need the call for their lowering.
+  if (ctorDecl.isDefaultConstructor()) {
+    if (ctorDecl.isTrivial() && op.getNumResults() == 0) {
+      if (!op->getParentOfType<ArrayCtor>() &&
+          !op->getParentOfType<ArrayDtor>()) {
+        op.erase();
+      }
+    }
     return;
+  }
 
   if (ctorDecl.isCopyConstructor()) {
     // Additional safety checks: constructor calls should have no return value

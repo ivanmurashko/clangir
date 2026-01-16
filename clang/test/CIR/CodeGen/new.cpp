@@ -1,5 +1,9 @@
 // RUN: %clang_cc1 -std=c++20 -triple x86_64-unknown-linux-gnu -I%S/../Inputs -fclangir -emit-cir %s -o %t.cir
 // RUN: FileCheck --input-file=%t.cir %s
+// RUN: %clang_cc1 -std=c++20 -triple x86_64-unknown-linux-gnu -I%S/../Inputs -fclangir -emit-llvm %s -o %t.ll
+// RUN: FileCheck --check-prefix=LLVM --input-file=%t.ll %s
+// RUN: %clang_cc1 -std=c++20 -triple x86_64-unknown-linux-gnu -I%S/../Inputs -emit-llvm %s -o %t-og.ll
+// RUN: FileCheck --check-prefix=OGCG --input-file=%t-og.ll %s
 
 #include "std-cxx.h"
 
@@ -47,10 +51,17 @@ public:
 // CHECK:   %5 = cir.cast bitcast %4 : !cir.ptr<!rec_B> -> !cir.ptr<!void>
 // CHECK:   %6 = cir.cast bitcast %5 : !cir.ptr<!void> -> !cir.ptr<!rec_B>
 
-// cir.call @B::B()(%new_placament_ptr)
-// CHECK:   cir.call @_ZN1BC1Ev(%6) : (!cir.ptr<!rec_B>) -> ()
+// Trivial default constructor call is lowered away.
 // CHECK:   cir.return
 // CHECK: }
+
+// LLVM-LABEL: define {{.*}} @_ZN1B9constructEPS_
+// LLVM-NOT:     call {{.*}} @_ZN1BC1Ev
+// LLVM:         ret void
+
+// OGCG-LABEL: define {{.*}} @_ZN1B9constructEPS_
+// OGCG-NOT:     call {{.*}} @_ZN1BC1Ev
+// OGCG:         ret void
 
 void t() {
   B b;

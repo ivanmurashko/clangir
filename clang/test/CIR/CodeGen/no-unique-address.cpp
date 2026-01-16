@@ -8,6 +8,7 @@
 // Test that [[no_unique_address]] empty fields are handled correctly.
 // These fields are zero-sized and don't occupy space in the struct layout,
 // but we still need to be able to initialize them in constructors.
+// Trivial default constructors for empty fields are lowered away.
 
 struct Empty {};
 
@@ -26,13 +27,12 @@ void test() {
 
 // CIR: cir.func {{.*}}linkonce_odr @_ZN1SC2Ev
 // CIR:   cir.store {{.*}} : !s32i, !cir.ptr<!s32i>
-// CIR:   cir.cast bitcast {{.*}} : !cir.ptr<!rec_S> -> !cir.ptr<!rec_Empty>
-// CIR:   cir.call @_ZN5EmptyC1Ev
 // CIR:   cir.return
 
+// Trivial default constructor call is lowered away, matching OG behavior
 // LLVM-LABEL: define {{.*}} @_ZN1SC2Ev
 // LLVM:   store i32 1
-// LLVM:   call void @_ZN5EmptyC1Ev
+// LLVM-NOT:   call void @_ZN5EmptyC1Ev
 // LLVM:   ret void
 
 // OGCG-LABEL: define {{.*}} @_ZN1SC2Ev

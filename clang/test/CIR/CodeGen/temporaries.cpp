@@ -4,6 +4,10 @@
 // RUN: FileCheck --input-file=%t.eh.cir %s -check-prefix=CIR_EH
 // RUN: cir-translate %t.cir -cir-to-llvmir --disable-cc-lowering -o %t.ll
 // RUN: FileCheck --input-file=%t.ll %s -check-prefix=LLVM
+// RUN: %clang_cc1 -std=c++17 -triple x86_64-unknown-linux-gnu -fclangir -emit-llvm %s -o %t-cir.ll
+// RUN: FileCheck --input-file=%t-cir.ll %s -check-prefix=LLVM_CIR
+// RUN: %clang_cc1 -std=c++17 -triple x86_64-unknown-linux-gnu -emit-llvm %s -o %t-og.ll
+// RUN: FileCheck --input-file=%t-og.ll %s -check-prefix=OGCG
 
 struct E {
   ~E();
@@ -17,11 +21,11 @@ void f() {
 //      CIR: cir.func private @_ZN1EC1Ev(!cir.ptr<!rec_E>) special_member<#cir.cxx_ctor<!rec_E, default>> extra(#fn_attr)
 // CIR-NEXT: cir.func private @_ZN1EntEv(!cir.ptr<!rec_E>) -> !rec_E
 // CIR-NEXT: cir.func private @_ZN1ED1Ev(!cir.ptr<!rec_E>) special_member<#cir.cxx_dtor<!rec_E>> extra(#fn_attr)
+// Trivial default constructor call is lowered away.
 // CIR-NEXT: cir.func {{.*}} @_Z1fv() {{.*}} {
 // CIR-NEXT:   cir.scope {
 // CIR-NEXT:     %[[ONE:[0-9]+]] = cir.alloca !rec_E, !cir.ptr<!rec_E>, ["agg.tmp.ensured"] {alignment = 1 : i64}
 // CIR-NEXT:     %[[TWO:[0-9]+]] = cir.alloca !rec_E, !cir.ptr<!rec_E>, ["ref.tmp0"] {alignment = 1 : i64}
-// CIR-NEXT:     cir.call @_ZN1EC1Ev(%1) : (!cir.ptr<!rec_E>) -> () extra(#fn_attr)
 // CIR-NEXT:     %[[THREE:[0-9]+]] = cir.call @_ZN1EntEv(%[[TWO]]) : (!cir.ptr<!rec_E>) -> !rec_E
 // CIR-NEXT:     cir.store{{.*}} %[[THREE]], %[[ONE]] : !rec_E, !cir.ptr<!rec_E>
 // CIR-NEXT:     cir.call @_ZN1ED1Ev(%[[ONE]]) : (!cir.ptr<!rec_E>) -> () extra(#fn_attr)
@@ -49,3 +53,13 @@ const int &r = (const int&)n;
 
 //      LLVM: @_ZGR1r_ = internal constant i32 1234, align 4
 // LLVM-NEXT: @r = constant ptr @_ZGR1r_, align 8
+
+// LLVM_CIR-LABEL: define {{.*}} @_Z1fv
+// LLVM_CIR-NOT:     call {{.*}} @_ZN1EC1Ev
+// LLVM_CIR:         call {{.*}} @_ZN1EntEv
+// LLVM_CIR:         call {{.*}} @_ZN1ED1Ev
+
+// OGCG-LABEL: define {{.*}} @_Z1fv
+// OGCG-NOT:     call {{.*}} @_ZN1EC1Ev
+// OGCG:         call {{.*}} @_ZN1EntEv
+// OGCG:         call {{.*}} @_ZN1ED1Ev

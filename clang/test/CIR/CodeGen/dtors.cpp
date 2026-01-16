@@ -1,5 +1,9 @@
 // RUN: %clang_cc1 -triple x86_64-unknown-linux-gnu -std=c++20 -fclangir -mconstructor-aliases -emit-cir %s -o %t.cir
 // RUN: FileCheck --input-file=%t.cir %s
+// RUN: %clang_cc1 -triple x86_64-unknown-linux-gnu -std=c++20 -fclangir -mconstructor-aliases -emit-llvm %s -o %t.ll
+// RUN: FileCheck --check-prefix=LLVM --input-file=%t.ll %s
+// RUN: %clang_cc1 -triple x86_64-unknown-linux-gnu -std=c++20 -mconstructor-aliases -emit-llvm %s -o %t-og.ll
+// RUN: FileCheck --check-prefix=OGCG --input-file=%t-og.ll %s
 
 enum class EFMode { Always, Verbose };
 
@@ -179,9 +183,9 @@ void m() { G l(j); }
 // CHECK:   %[[V1:.*]] = cir.alloca !s64i, !cir.ptr<!s64i>, ["__retval"] {alignment = 8 : i64}
 // CHECK:   cir.store %arg0, %[[V0]] : !cir.ptr<!rec_G>, !cir.ptr<!cir.ptr<!rec_G>>
 // CHECK:   %[[V2:.*]] = cir.load{{.*}} %[[V0]] : !cir.ptr<!cir.ptr<!rec_G>>, !cir.ptr<!rec_G>
+// Trivial default constructor call is lowered away.
 // CHECK:   %[[V3:.*]] = cir.scope {
 // CHECK:     %[[V4:.*]] = cir.alloca !rec_A2, !cir.ptr<!rec_A2>, ["agg.tmp0"] {alignment = 1 : i64}
-// CHECK:     cir.call @_ZN2A2C2Ev(%[[V4]]) : (!cir.ptr<!rec_A2>) -> ()
 // CHECK:     %[[V5:.*]] = cir.load{{.*}} %[[V4]] : !cir.ptr<!rec_A2>, !rec_A2
 // CHECK:     %[[V6:.*]] = cir.call @_ZN1G1kE2A2(%[[V2]], %[[V5]]) : (!cir.ptr<!rec_G>, !rec_A2) -> !s64i
 // CHECK:     cir.call @_ZN2A2D1Ev(%[[V4]]) : (!cir.ptr<!rec_A2>) -> ()
@@ -189,3 +193,15 @@ void m() { G l(j); }
 // CHECK:   } : !s64i
 // CHECK:   cir.trap
 // CHECK: }
+
+// LLVM-LABEL: define {{.*}} @_ZN1G1iEv
+// LLVM:         alloca %class.A2
+// LLVM-NOT:     call {{.*}} @_ZN2A2C2Ev
+// LLVM:         call {{.*}} @_ZN1G1kE2A2
+// LLVM:         call {{.*}} @_ZN2A2D1Ev
+
+// OGCG-LABEL: define {{.*}} @_ZN1G1iEv
+// OGCG:         %agg.tmp = alloca %class.A2
+// OGCG-NOT:     call {{.*}} @_ZN2A2C2Ev
+// OGCG:         call {{.*}} @_ZN1G1kE2A2
+// OGCG:         call {{.*}} @_ZN2A2D1Ev

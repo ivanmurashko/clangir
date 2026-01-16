@@ -1,5 +1,9 @@
 // RUN: %clang_cc1 -triple x86_64-unknown-linux-gnu -fclangir -emit-cir -fexceptions -fcxx-exceptions %s -o %t.cir
 // RUN: FileCheck --input-file=%t.cir %s
+// RUN: %clang_cc1 -triple x86_64-unknown-linux-gnu -fclangir -fexceptions -fcxx-exceptions -emit-llvm %s -o %t.ll
+// RUN: FileCheck --check-prefix=LLVM --input-file=%t.ll %s
+// RUN: %clang_cc1 -triple x86_64-unknown-linux-gnu -fexceptions -fcxx-exceptions -emit-llvm %s -o %t-og.ll
+// RUN: FileCheck --check-prefix=OGCG --input-file=%t-og.ll %s
 
 struct Delegating {
   Delegating();
@@ -26,8 +30,7 @@ struct DelegatingWithZeroing {
 };
 
 // Check that the delegating constructor performs zero-initialization here.
-// FIXME: we should either emit the trivial default constructor or remove the
-// call to it in a lowering pass.
+// The trivial default constructor call is now lowered away as expected.
 DelegatingWithZeroing::DelegatingWithZeroing(int) : DelegatingWithZeroing() {}
 
 // CHECK-LABEL: cir.func {{.*}} @_ZN21DelegatingWithZeroingC2Ei(%arg0: !cir.ptr<!rec_DelegatingWithZeroing> {{.*}}, %arg1: !s32i {{.*}}) {{.*}} {
@@ -38,9 +41,20 @@ DelegatingWithZeroing::DelegatingWithZeroing(int) : DelegatingWithZeroing() {}
 // CHECK-NEXT:    %2 = cir.load %0 : !cir.ptr<!cir.ptr<!rec_DelegatingWithZeroing>>, !cir.ptr<!rec_DelegatingWithZeroing>
 // CHECK-NEXT:    %3 = cir.const #cir.zero : !rec_DelegatingWithZeroing
 // CHECK-NEXT:    cir.store{{.*}} %3, %2 : !rec_DelegatingWithZeroing, !cir.ptr<!rec_DelegatingWithZeroing>
-// CHECK-NEXT:    cir.call @_ZN21DelegatingWithZeroingC2Ev(%2) : (!cir.ptr<!rec_DelegatingWithZeroing>) -> () extra(#fn_attr{{[0-9]*}})
 // CHECK-NEXT:    cir.return
 // CHECK-NEXT:  }
+
+// OG uses memset instead of calling the trivial default constructor.
+// CIR uses store zeroinitializer instead. Both achieve the same result.
+// LLVM-LABEL: define {{.*}} @_ZN21DelegatingWithZeroingC2Ei
+// LLVM-NOT:     call {{.*}} @_ZN21DelegatingWithZeroingC2Ev
+// LLVM:         store %struct.DelegatingWithZeroing zeroinitializer
+// LLVM:         ret void
+
+// OGCG-LABEL: define {{.*}} @_ZN21DelegatingWithZeroingC2Ei
+// OGCG-NOT:     call {{.*}} @_ZN21DelegatingWithZeroingC2Ev
+// OGCG:         call void @llvm.memset
+// OGCG:         ret void
 
 void canThrow();
 struct HasNonTrivialDestructor {
