@@ -4485,7 +4485,34 @@ CIRGenFunction::emitAArch64BuiltinExpr(unsigned BuiltinID, const CallExpr *E,
   case NEON::BI__builtin_neon_vcvtnq_s64_v:
   case NEON::BI__builtin_neon_vcvtn_u64_v:
   case NEON::BI__builtin_neon_vcvtnq_u64_v: {
-    llvm_unreachable("NEON::BI__builtin_neon_vcvtnq_u64_v NYI");
+    // Float to int conversion with round to nearest
+    llvm::StringRef intrincsName =
+        usgn ? "aarch64.neon.fcvtnu" : "aarch64.neon.fcvtns";
+
+    // Determine the float source type based on result element type
+    mlir::Type floatEltTy;
+    switch (Type.getEltType()) {
+    case NeonTypeFlags::Int16:
+      floatEltTy = getCIRGenModule().FP16Ty;
+      break;
+    case NeonTypeFlags::Int32:
+      floatEltTy = getCIRGenModule().FloatTy;
+      break;
+    case NeonTypeFlags::Int64:
+      floatEltTy = getCIRGenModule().DoubleTy;
+      break;
+    default:
+      llvm_unreachable("unexpected element type for fcvtn");
+    }
+
+    // Create the float vector type with same size as result type
+    cir::VectorType floatVecTy = cir::VectorType::get(floatEltTy, ty.getSize());
+
+    // Bitcast operand to float vector type
+    Ops[0] = builder.createBitcast(Ops[0], floatVecTy);
+
+    return emitNeonCall(builder, {floatVecTy}, Ops, intrincsName, ty,
+                        getLoc(E->getExprLoc()));
   }
   case NEON::BI__builtin_neon_vcvtp_s16_f16:
   case NEON::BI__builtin_neon_vcvtp_s32_v:

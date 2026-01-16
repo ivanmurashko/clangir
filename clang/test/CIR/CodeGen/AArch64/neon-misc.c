@@ -2243,6 +2243,32 @@ uint32_t test_vminvq_u32(uint32x4_t a) {
   // OGCG: call i32 @llvm.vector.reduce.umin.v4i32
 }
 
+int64x2_t test_vcvtnq_s64_f64(float64x2_t a) {
+  return vcvtnq_s64_f64(a);
+
+  // CIR-LABEL: vcvtnq_s64_f64
+  // CIR: cir.llvm.intrinsic "aarch64.neon.fcvtns" {{%.*}} : (!cir.vector<!cir.double x 2>) -> !cir.vector<!s64i x 2>
+
+  // LLVM-LABEL: @test_vcvtnq_s64_f64
+  // LLVM: call <2 x i64> @llvm.aarch64.neon.fcvtns.v2i64.v2f64
+
+  // OGCG-LABEL: @test_vcvtnq_s64_f64
+  // OGCG: call <2 x i64> @llvm.aarch64.neon.fcvtns.v2i64.v2f64
+}
+
+uint64x2_t test_vcvtnq_u64_f64(float64x2_t a) {
+  return vcvtnq_u64_f64(a);
+
+  // CIR-LABEL: vcvtnq_u64_f64
+  // CIR: cir.llvm.intrinsic "aarch64.neon.fcvtnu" {{%.*}} : (!cir.vector<!cir.double x 2>) -> !cir.vector<!u64i x 2>
+
+  // LLVM-LABEL: @test_vcvtnq_u64_f64
+  // LLVM: call <2 x i64> @llvm.aarch64.neon.fcvtnu.v2i64.v2f64
+
+  // OGCG-LABEL: @test_vcvtnq_u64_f64
+  // OGCG: call <2 x i64> @llvm.aarch64.neon.fcvtnu.v2i64.v2f64
+}
+
 float32x2_t test_vsqrt_f32(float32x2_t a) {
   return vsqrt_f32(a);
 
