@@ -2626,6 +2626,15 @@ mlir::Value CIRGenFunction::emitCommonNeonBuiltinExpr(
     ops[0] = builder.createBitcast(ops[0], vTy);
     break;
   }
+  case NEON::BI__builtin_neon_vdot_u32: {
+    // vdot unsigned: Dot product of two u8 vectors, accumulating into u32
+    unsigned numBytes = vTy.getSize() * 4;
+    auto inputTy = cir::VectorType::get(builder.getUInt8Ty(), numBytes);
+    intrincsName = "aarch64.neon.udot";
+    argTypes = {vTy, inputTy, inputTy};
+    ops[0] = builder.createBitcast(ops[0], vTy);
+    break;
+  }
   case NEON::BI__builtin_neon_vpadd_v:
   case NEON::BI__builtin_neon_vpaddq_v: {
     intrincsName = mlir::isa<cir::SingleType, cir::DoubleType, cir::FP16Type>(
