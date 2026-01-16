@@ -1,17 +1,18 @@
 
 // RUN: %clang_cc1 -triple aarch64-none-linux-android24 -target-feature +neon \
-// RUN:    -fclangir -disable-O0-optnone \
+// RUN:    -target-feature +dotprod -fclangir -disable-O0-optnone \
 // RUN:  -flax-vector-conversions=none -emit-cir -o %t.cir %s
 // RUN: FileCheck --check-prefix=CIR --input-file=%t.cir %s
 
 // RUN: %clang_cc1 -triple aarch64-none-linux-android24 -target-feature +neon \
-// RUN:    -fclangir -disable-O0-optnone \
+// RUN:    -target-feature +dotprod -fclangir -disable-O0-optnone \
 // RUN:  -flax-vector-conversions=none -fno-clangir-call-conv-lowering -emit-llvm -o - %s \
 // RUN: | opt -S -passes=mem2reg,simplifycfg -o %t.ll
 // RUN: FileCheck --check-prefix=LLVM --input-file=%t.ll %s
 
 // RUN: %clang_cc1 -triple aarch64-none-linux-android24 -target-feature +neon \
-// RUN:  -disable-O0-optnone -flax-vector-conversions=none -emit-llvm -o - %s \
+// RUN:    -target-feature +dotprod -disable-O0-optnone \
+// RUN:  -flax-vector-conversions=none -emit-llvm -o - %s \
 // RUN: | opt -S -passes=mem2reg,simplifycfg -o %t-og.ll
 // RUN: FileCheck --check-prefix=OGCG --input-file=%t-og.ll %s
 
@@ -2734,4 +2735,17 @@ uint8x8_t test_vtbl1_u8(uint8x8_t a, uint8x8_t b) {
   // OGCG-LABEL: @test_vtbl1_u8
   // OGCG: shufflevector <8 x i8> {{%.*}}, <8 x i8> zeroinitializer, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
   // OGCG: call <8 x i8> @llvm.aarch64.neon.tbl1.v8i8(<16 x i8> {{%.*}}, <8 x i8> {{%.*}})
+}
+
+int32x2_t test_vdot_s32(int32x2_t a, int8x8_t b, int8x8_t c) {
+  return vdot_s32(a, b, c);
+
+  // CIR-LABEL: vdot_s32
+  // CIR: cir.llvm.intrinsic "aarch64.neon.sdot" {{%.*}}, {{%.*}}, {{%.*}} :
+
+  // LLVM-LABEL: @test_vdot_s32
+  // LLVM: call <2 x i32> @llvm.aarch64.neon.sdot.v2i32.v8i8(<2 x i32> {{%.*}}, <8 x i8> {{%.*}}, <8 x i8> {{%.*}})
+
+  // OGCG-LABEL: @test_vdot_s32
+  // OGCG: call <2 x i32> @llvm.aarch64.neon.sdot.v2i32.v8i8(<2 x i32> {{%.*}}, <8 x i8> {{%.*}}, <8 x i8> {{%.*}})
 }

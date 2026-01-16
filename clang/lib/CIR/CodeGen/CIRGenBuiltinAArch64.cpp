@@ -2613,13 +2613,23 @@ mlir::Value CIRGenFunction::emitCommonNeonBuiltinExpr(
     intrincsName = "aarch64.crypto.aese";
     break;
   }
+  case NEON::BI__builtin_neon_vdot_s32: {
+    // vdot: Dot product of two i8 vectors, accumulating into i32 vector
+    // Intrinsic signature: sdot(v2i32 acc, v8i8 a, v8i8 b) -> v2i32
+    // InputTy is v8i8 for 64-bit result, v16i8 for 128-bit result
+    unsigned numBytes = vTy.getSize() * 4; // 4 bytes per i32 element
+    auto inputTy = cir::VectorType::get(builder.getSInt8Ty(), numBytes);
+    intrincsName = "aarch64.neon.sdot";
+    argTypes = {vTy, inputTy, inputTy};
+    ops[0] = builder.createBitcast(ops[0], vTy);
+    break;
+  }
   case NEON::BI__builtin_neon_vpadd_v:
   case NEON::BI__builtin_neon_vpaddq_v: {
-    intrincsName =
-        mlir::isa<cir::SingleType, cir::DoubleType, cir::FP16Type>(
-            vTy.getElementType())
-            ? "aarch64.neon.faddp"
-            : "aarch64.neon.addp";
+    intrincsName = mlir::isa<cir::SingleType, cir::DoubleType, cir::FP16Type>(
+                       vTy.getElementType())
+                       ? "aarch64.neon.faddp"
+                       : "aarch64.neon.addp";
     break;
   }
   case NEON::BI__builtin_neon_vqadd_v:
