@@ -1014,14 +1014,16 @@ public:
   };
 
   /// The scope of a CXXDefaultInitExpr. Within this scope, the value of 'this'
-  /// is overridden to be the object under construction.
+  /// is overridden to be the object under construction. Also sets the CIR
+  /// currSrcLoc to the default initializer's expression location.
   class CXXDefaultInitExprScope {
   public:
     CXXDefaultInitExprScope(CIRGenFunction &CGF,
                             const clang::CXXDefaultInitExpr *E)
         : CGF{CGF}, OldCXXThisValue(CGF.CXXThisValue),
           OldCXXThisAlignment(CGF.CXXThisAlignment),
-          SourceLocScope(E, CGF.CurSourceLocExprScope) {
+          SourceLocScope(E, CGF.CurSourceLocExprScope),
+          LocScope(CGF, CGF.getLoc(E->getExpr()->getSourceRange())) {
       CGF.CXXThisValue = CGF.CXXDefaultInitExprThis.getPointer();
       CGF.CXXThisAlignment = CGF.CXXDefaultInitExprThis.getAlignment();
     }
@@ -1035,11 +1037,18 @@ public:
     mlir::Value OldCXXThisValue;
     clang::CharUnits OldCXXThisAlignment;
     SourceLocExprScopeGuard SourceLocScope;
+    SourceLocRAIIObject LocScope;
   };
 
+  /// Scope for handling CXXDefaultArgExpr. Sets both the Clang source location
+  /// scope and the CIR currSrcLoc to the default argument's expression
+  /// location.
   struct CXXDefaultArgExprScope : SourceLocExprScopeGuard {
+    SourceLocRAIIObject LocScope;
+
     CXXDefaultArgExprScope(CIRGenFunction &CGF, const CXXDefaultArgExpr *E)
-        : SourceLocExprScopeGuard(E, CGF.CurSourceLocExprScope) {}
+        : SourceLocExprScopeGuard(E, CGF.CurSourceLocExprScope),
+          LocScope(CGF, CGF.getLoc(E->getExpr()->getSourceRange())) {}
   };
 
   LValue MakeNaturalAlignPointeeAddrLValue(mlir::Value V, clang::QualType T);
