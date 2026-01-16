@@ -178,7 +178,7 @@ float32x2_t test_vpadd_f32(float32x2_t a, float32x2_t b) {
 }
 
 // CIR-LABEL: vpadd_f32
-// CIR: [[RES:%.*]] = cir.llvm.intrinsic "aarch64.neon.addp" {{%.*}}, {{%.*}} :
+// CIR: [[RES:%.*]] = cir.llvm.intrinsic "aarch64.neon.faddp" {{%.*}}, {{%.*}} :
 // CIR-SAME: (!cir.vector<!cir.float x 2>, !cir.vector<!cir.float x 2>) -> !cir.vector<!cir.float x 2>
 // CIR: {{%.*}} = cir.cast bitcast [[RES]] : !cir.vector<!cir.float x 2> -> !cir.vector<!s8i x 8>
 
@@ -191,7 +191,7 @@ float32x4_t test_vpaddq_f32(float32x4_t a, float32x4_t b) {
 }
 
 // CIR-LABEL: vpaddq_f32
-// CIR: [[RES:%.*]] = cir.llvm.intrinsic "aarch64.neon.addp" {{%.*}}, {{%.*}} :
+// CIR: [[RES:%.*]] = cir.llvm.intrinsic "aarch64.neon.faddp" {{%.*}}, {{%.*}} :
 // CIR-SAME: (!cir.vector<!cir.float x 4>, !cir.vector<!cir.float x 4>) -> !cir.vector<!cir.float x 4>
 // CIR: {{%.*}} = cir.cast bitcast [[RES]] : !cir.vector<!cir.float x 4> -> !cir.vector<!s8i x 16>
 
@@ -204,7 +204,7 @@ float64x2_t test_vpaddq_f64(float64x2_t a, float64x2_t b) {
 }
 
 // CIR-LABEL: vpaddq_f64
-// CIR: [[RES:%.*]] = cir.llvm.intrinsic "aarch64.neon.addp" {{%.*}}, {{%.*}} :
+// CIR: [[RES:%.*]] = cir.llvm.intrinsic "aarch64.neon.faddp" {{%.*}}, {{%.*}} :
 // CIR-SAME: (!cir.vector<!cir.double x 2>, !cir.vector<!cir.double x 2>) -> !cir.vector<!cir.double x 2>
 // CIR: {{%.*}} = cir.cast bitcast [[RES]] : !cir.vector<!cir.double x 2> -> !cir.vector<!s8i x 16>
 

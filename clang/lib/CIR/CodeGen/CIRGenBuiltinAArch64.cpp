@@ -1971,10 +1971,13 @@ static mlir::Value emitAArch64TblBuiltinExpr(CIRGenFunction &CGF,
     CIRGenBuilderTy &Builder = CGF.getBuilder();
     mlir::Location Loc = CGF.getLoc(E->getExprLoc());
 
+    // Get the table operand type (may differ from return type due to bitcast)
+    auto TblTy = mlir::cast<cir::VectorType>(Ops[0].getType());
+
     // Extend 64-bit table to 128-bit by shuffling with zero
     // Indices: [0, ..., 15]
     // First 8 from table, last 8 from zero vector
-    mlir::Value ZeroVec = Builder.getZero(Loc, Ty);
+    mlir::Value ZeroVec = Builder.getZero(Loc, TblTy);
     llvm::SmallVector<int64_t, 16> Indices = {0, 1, 2,  3,  4,  5,  6,  7,
                                               8, 9, 10, 11, 12, 13, 14, 15};
 
@@ -2612,9 +2615,11 @@ mlir::Value CIRGenFunction::emitCommonNeonBuiltinExpr(
   }
   case NEON::BI__builtin_neon_vpadd_v:
   case NEON::BI__builtin_neon_vpaddq_v: {
-    intrincsName = mlir::isa<mlir::FloatType>(vTy.getElementType())
-                       ? "aarch64.neon.faddp"
-                       : "aarch64.neon.addp";
+    intrincsName =
+        mlir::isa<cir::SingleType, cir::DoubleType, cir::FP16Type>(
+            vTy.getElementType())
+            ? "aarch64.neon.faddp"
+            : "aarch64.neon.addp";
     break;
   }
   case NEON::BI__builtin_neon_vqadd_v:

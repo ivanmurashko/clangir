@@ -2693,3 +2693,45 @@ void test_vst1_s32_x4(int32_t *a, int32x2x4_t b) {
   // OGCG-LABEL: @test_vst1_s32_x4
   // OGCG: call void @llvm.aarch64.neon.st1x4.v2i32.p0(<2 x i32> {{%.*}}, <2 x i32> {{%.*}}, <2 x i32> {{%.*}}, <2 x i32> {{%.*}}, ptr {{%.*}})
 }
+
+int32x2_t test_vpadd_s32(int32x2_t a, int32x2_t b) {
+  return vpadd_s32(a, b);
+
+  // CIR-LABEL: vpadd_s32
+  // CIR: cir.llvm.intrinsic "aarch64.neon.addp" {{%.*}}, {{%.*}} :
+
+  // LLVM-LABEL: @test_vpadd_s32
+  // LLVM: call <2 x i32> @llvm.aarch64.neon.addp.v2i32(<2 x i32> {{%.*}}, <2 x i32> {{%.*}})
+
+  // OGCG-LABEL: @test_vpadd_s32
+  // OGCG: call <2 x i32> @llvm.aarch64.neon.addp.v2i32(<2 x i32> {{%.*}}, <2 x i32> {{%.*}})
+}
+
+float32x2_t test_vpadd_f32(float32x2_t a, float32x2_t b) {
+  return vpadd_f32(a, b);
+
+  // CIR-LABEL: vpadd_f32
+  // CIR: cir.llvm.intrinsic "aarch64.neon.faddp" {{%.*}}, {{%.*}} :
+
+  // LLVM-LABEL: @test_vpadd_f32
+  // LLVM: call <2 x float> @llvm.aarch64.neon.faddp.v2f32(<2 x float> {{%.*}}, <2 x float> {{%.*}})
+
+  // OGCG-LABEL: @test_vpadd_f32
+  // OGCG: call <2 x float> @llvm.aarch64.neon.faddp.v2f32(<2 x float> {{%.*}}, <2 x float> {{%.*}})
+}
+
+uint8x8_t test_vtbl1_u8(uint8x8_t a, uint8x8_t b) {
+  return vtbl1_u8(a, b);
+
+  // CIR-LABEL: vtbl1_u8
+  // CIR: %[[TBL:.*]] = cir.vec.shuffle({{%.*}}, {{%.*}} : !cir.vector<!s8i x 8>)
+  // CIR: cir.llvm.intrinsic "aarch64.neon.tbl1" %[[TBL]], {{%.*}} :
+
+  // LLVM-LABEL: @test_vtbl1_u8
+  // LLVM: %[[SHF:.*]] = shufflevector <8 x i8> {{%.*}}, <8 x i8> zeroinitializer, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
+  // LLVM: call <8 x i8> @llvm.aarch64.neon.tbl1.v8i8(<16 x i8> %[[SHF]], <8 x i8> {{%.*}})
+
+  // OGCG-LABEL: @test_vtbl1_u8
+  // OGCG: shufflevector <8 x i8> {{%.*}}, <8 x i8> zeroinitializer, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
+  // OGCG: call <8 x i8> @llvm.aarch64.neon.tbl1.v8i8(<16 x i8> {{%.*}}, <8 x i8> {{%.*}})
+}
