@@ -3029,7 +3029,8 @@ static mlir::Value emitCommonNeonSISDBuiltinExpr(
     return emitNeonCall(builder, {argTy}, ops, "aarch64.neon.fminnmv", resultTy,
                         loc);
   case NEON::BI__builtin_neon_vminv_f32:
-    llvm_unreachable(" neon_vminv_f32 NYI ");
+    return emitNeonCall(builder, {argTy}, ops, "aarch64.neon.fminv", resultTy,
+                        loc);
   case NEON::BI__builtin_neon_vminv_s32:
     return emitNeonCall(builder, {argTy}, ops, "aarch64.neon.sminv", resultTy,
                         loc);
@@ -3041,7 +3042,8 @@ static mlir::Value emitCommonNeonSISDBuiltinExpr(
     return emitNeonCall(builder, {argTy}, ops, "aarch64.neon.fminv", resultTy,
                         loc);
   case NEON::BI__builtin_neon_vminvq_s32:
-    llvm_unreachable(" neon_vminvq_s32 NYI ");
+    return emitNeonCall(builder, {argTy}, ops, "vector.reduce.smin", resultTy,
+                        loc);
   case NEON::BI__builtin_neon_vminvq_u32:
     return emitNeonCall(builder, {argTy}, ops, "vector.reduce.umin", resultTy,
                         loc);
