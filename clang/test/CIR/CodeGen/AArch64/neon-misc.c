@@ -2749,3 +2749,16 @@ int32x2_t test_vdot_s32(int32x2_t a, int8x8_t b, int8x8_t c) {
   // OGCG-LABEL: @test_vdot_s32
   // OGCG: call <2 x i32> @llvm.aarch64.neon.sdot.v2i32.v8i8(<2 x i32> {{%.*}}, <8 x i8> {{%.*}}, <8 x i8> {{%.*}})
 }
+
+int32x4_t test_vdotq_s32(int32x4_t a, int8x16_t b, int8x16_t c) {
+  return vdotq_s32(a, b, c);
+
+  // CIR-LABEL: vdotq_s32
+  // CIR: cir.llvm.intrinsic "aarch64.neon.sdot" {{%.*}}, {{%.*}}, {{%.*}} :
+
+  // LLVM-LABEL: @test_vdotq_s32
+  // LLVM: call <4 x i32> @llvm.aarch64.neon.sdot.v4i32.v16i8(<4 x i32> {{%.*}}, <16 x i8> {{%.*}}, <16 x i8> {{%.*}})
+
+  // OGCG-LABEL: @test_vdotq_s32
+  // OGCG: call <4 x i32> @llvm.aarch64.neon.sdot.v4i32.v16i8(<4 x i32> {{%.*}}, <16 x i8> {{%.*}}, <16 x i8> {{%.*}})
+}
