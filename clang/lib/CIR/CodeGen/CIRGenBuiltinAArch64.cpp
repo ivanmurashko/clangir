@@ -2786,6 +2786,58 @@ mlir::Value CIRGenFunction::emitCommonNeonBuiltinExpr(
     builder.createAlignedStore(loc, result, ops[0], ptrOp0.getAlignment());
     return result;
   }
+  case NEON::BI__builtin_neon_vst1_x2_v:
+  case NEON::BI__builtin_neon_vst1q_x2_v: {
+    // vst1_x2: Store 2 vectors (non-interleaved)
+    mlir::Location loc = getLoc(e->getExprLoc());
+
+    // Ops layout: [ptr, vec0, vec1]
+    mlir::Value vec0 = builder.createBitcast(ops[1], vTy);
+    mlir::Value vec1 = builder.createBitcast(ops[2], vTy);
+
+    llvm::SmallVector<mlir::Type> stArgTypes = {vec0.getType(), vec1.getType(),
+                                                ops[0].getType()};
+    llvm::SmallVector<mlir::Value> stArgs = {vec0, vec1, ops[0]};
+
+    return emitNeonCall(builder, std::move(stArgTypes), stArgs,
+                        "aarch64.neon.st1x2", builder.getVoidTy(), loc);
+  }
+  case NEON::BI__builtin_neon_vst1_x3_v:
+  case NEON::BI__builtin_neon_vst1q_x3_v: {
+    // vst1_x3: Store 3 vectors (non-interleaved)
+    mlir::Location loc = getLoc(e->getExprLoc());
+
+    // Ops layout: [ptr, vec0, vec1, vec2]
+    mlir::Value vec0 = builder.createBitcast(ops[1], vTy);
+    mlir::Value vec1 = builder.createBitcast(ops[2], vTy);
+    mlir::Value vec2 = builder.createBitcast(ops[3], vTy);
+
+    llvm::SmallVector<mlir::Type> stArgTypes = {
+        vec0.getType(), vec1.getType(), vec2.getType(), ops[0].getType()};
+    llvm::SmallVector<mlir::Value> stArgs = {vec0, vec1, vec2, ops[0]};
+
+    return emitNeonCall(builder, std::move(stArgTypes), stArgs,
+                        "aarch64.neon.st1x3", builder.getVoidTy(), loc);
+  }
+  case NEON::BI__builtin_neon_vst1_x4_v:
+  case NEON::BI__builtin_neon_vst1q_x4_v: {
+    // vst1_x4: Store 4 vectors (non-interleaved)
+    mlir::Location loc = getLoc(e->getExprLoc());
+
+    // Ops layout: [ptr, vec0, vec1, vec2, vec3]
+    mlir::Value vec0 = builder.createBitcast(ops[1], vTy);
+    mlir::Value vec1 = builder.createBitcast(ops[2], vTy);
+    mlir::Value vec2 = builder.createBitcast(ops[3], vTy);
+    mlir::Value vec3 = builder.createBitcast(ops[4], vTy);
+
+    llvm::SmallVector<mlir::Type> stArgTypes = {vec0.getType(), vec1.getType(),
+                                                vec2.getType(), vec3.getType(),
+                                                ops[0].getType()};
+    llvm::SmallVector<mlir::Value> stArgs = {vec0, vec1, vec2, vec3, ops[0]};
+
+    return emitNeonCall(builder, std::move(stArgTypes), stArgs,
+                        "aarch64.neon.st1x4", builder.getVoidTy(), loc);
+  }
   }
 
   if (intrincsName.empty())
@@ -3665,6 +3717,12 @@ CIRGenFunction::emitAArch64BuiltinExpr(unsigned BuiltinID, const CallExpr *E,
       case NEON::BI__builtin_neon_vld1q_x4_v:
       case NEON::BI__builtin_neon_vst1_v:
       case NEON::BI__builtin_neon_vst1q_v:
+      case NEON::BI__builtin_neon_vst1_x2_v:
+      case NEON::BI__builtin_neon_vst1q_x2_v:
+      case NEON::BI__builtin_neon_vst1_x3_v:
+      case NEON::BI__builtin_neon_vst1q_x3_v:
+      case NEON::BI__builtin_neon_vst1_x4_v:
+      case NEON::BI__builtin_neon_vst1q_x4_v:
       case NEON::BI__builtin_neon_vst1_lane_v:
       case NEON::BI__builtin_neon_vst1q_lane_v:
       case NEON::BI__builtin_neon_vldap1_lane_s64:

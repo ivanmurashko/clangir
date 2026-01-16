@@ -2615,3 +2615,81 @@ int8x8_t test_vtbl4_s8(int8x8x4_t a, int8x8_t b) {
   // OGCG: %[[MERGE2:.*]] = shufflevector <8 x i8> {{%.*}}, <8 x i8> {{%.*}}, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
   // OGCG: call <8 x i8> @llvm.aarch64.neon.tbl2.v8i8(<16 x i8> %[[MERGE1]], <16 x i8> %[[MERGE2]], <8 x i8> {{%.*}})
 }
+
+void test_vst1q_s32_x4(int32_t *a, int32x4x4_t b) {
+  vst1q_s32_x4(a, b);
+
+  // CIR-LABEL: vst1q_s32_x4
+  // CIR: cir.llvm.intrinsic "aarch64.neon.st1x4" {{%.*}}, {{%.*}}, {{%.*}}, {{%.*}}, {{%.*}} :
+
+  // LLVM-LABEL: @test_vst1q_s32_x4
+  // LLVM: call void @llvm.aarch64.neon.st1x4.v4i32.p0(<4 x i32> {{%.*}}, <4 x i32> {{%.*}}, <4 x i32> {{%.*}}, <4 x i32> {{%.*}}, ptr {{%.*}})
+
+  // OGCG-LABEL: @test_vst1q_s32_x4
+  // OGCG: call void @llvm.aarch64.neon.st1x4.v4i32.p0(<4 x i32> {{%.*}}, <4 x i32> {{%.*}}, <4 x i32> {{%.*}}, <4 x i32> {{%.*}}, ptr {{%.*}})
+}
+
+void test_vst1_s32_x2(int32_t *a, int32x2x2_t b) {
+  vst1_s32_x2(a, b);
+
+  // CIR-LABEL: vst1_s32_x2
+  // CIR: cir.llvm.intrinsic "aarch64.neon.st1x2" {{%.*}}, {{%.*}}, {{%.*}} :
+
+  // LLVM-LABEL: @test_vst1_s32_x2
+  // LLVM: call void @llvm.aarch64.neon.st1x2.v2i32.p0(<2 x i32> {{%.*}}, <2 x i32> {{%.*}}, ptr {{%.*}})
+
+  // OGCG-LABEL: @test_vst1_s32_x2
+  // OGCG: call void @llvm.aarch64.neon.st1x2.v2i32.p0(<2 x i32> {{%.*}}, <2 x i32> {{%.*}}, ptr {{%.*}})
+}
+
+void test_vst1q_s32_x2(int32_t *a, int32x4x2_t b) {
+  vst1q_s32_x2(a, b);
+
+  // CIR-LABEL: vst1q_s32_x2
+  // CIR: cir.llvm.intrinsic "aarch64.neon.st1x2" {{%.*}}, {{%.*}}, {{%.*}} :
+
+  // LLVM-LABEL: @test_vst1q_s32_x2
+  // LLVM: call void @llvm.aarch64.neon.st1x2.v4i32.p0(<4 x i32> {{%.*}}, <4 x i32> {{%.*}}, ptr {{%.*}})
+
+  // OGCG-LABEL: @test_vst1q_s32_x2
+  // OGCG: call void @llvm.aarch64.neon.st1x2.v4i32.p0(<4 x i32> {{%.*}}, <4 x i32> {{%.*}}, ptr {{%.*}})
+}
+
+void test_vst1_s32_x3(int32_t *a, int32x2x3_t b) {
+  vst1_s32_x3(a, b);
+
+  // CIR-LABEL: vst1_s32_x3
+  // CIR: cir.llvm.intrinsic "aarch64.neon.st1x3" {{%.*}}, {{%.*}}, {{%.*}}, {{%.*}} :
+
+  // LLVM-LABEL: @test_vst1_s32_x3
+  // LLVM: call void @llvm.aarch64.neon.st1x3.v2i32.p0(<2 x i32> {{%.*}}, <2 x i32> {{%.*}}, <2 x i32> {{%.*}}, ptr {{%.*}})
+
+  // OGCG-LABEL: @test_vst1_s32_x3
+  // OGCG: call void @llvm.aarch64.neon.st1x3.v2i32.p0(<2 x i32> {{%.*}}, <2 x i32> {{%.*}}, <2 x i32> {{%.*}}, ptr {{%.*}})
+}
+
+void test_vst1q_s32_x3(int32_t *a, int32x4x3_t b) {
+  vst1q_s32_x3(a, b);
+
+  // CIR-LABEL: vst1q_s32_x3
+  // CIR: cir.llvm.intrinsic "aarch64.neon.st1x3" {{%.*}}, {{%.*}}, {{%.*}}, {{%.*}} :
+
+  // LLVM-LABEL: @test_vst1q_s32_x3
+  // LLVM: call void @llvm.aarch64.neon.st1x3.v4i32.p0(<4 x i32> {{%.*}}, <4 x i32> {{%.*}}, <4 x i32> {{%.*}}, ptr {{%.*}})
+
+  // OGCG-LABEL: @test_vst1q_s32_x3
+  // OGCG: call void @llvm.aarch64.neon.st1x3.v4i32.p0(<4 x i32> {{%.*}}, <4 x i32> {{%.*}}, <4 x i32> {{%.*}}, ptr {{%.*}})
+}
+
+void test_vst1_s32_x4(int32_t *a, int32x2x4_t b) {
+  vst1_s32_x4(a, b);
+
+  // CIR-LABEL: vst1_s32_x4
+  // CIR: cir.llvm.intrinsic "aarch64.neon.st1x4" {{%.*}}, {{%.*}}, {{%.*}}, {{%.*}}, {{%.*}} :
+
+  // LLVM-LABEL: @test_vst1_s32_x4
+  // LLVM: call void @llvm.aarch64.neon.st1x4.v2i32.p0(<2 x i32> {{%.*}}, <2 x i32> {{%.*}}, <2 x i32> {{%.*}}, <2 x i32> {{%.*}}, ptr {{%.*}})
+
+  // OGCG-LABEL: @test_vst1_s32_x4
+  // OGCG: call void @llvm.aarch64.neon.st1x4.v2i32.p0(<2 x i32> {{%.*}}, <2 x i32> {{%.*}}, <2 x i32> {{%.*}}, <2 x i32> {{%.*}}, ptr {{%.*}})
+}
