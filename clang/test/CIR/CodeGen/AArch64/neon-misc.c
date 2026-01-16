@@ -2204,6 +2204,45 @@ uint32_t test_vmaxvq_u32(uint32x4_t a) {
   // OGCG: call i32 @llvm.vector.reduce.umax.v4i32
 }
 
+int32_t test_vmaxvq_s32(int32x4_t a) {
+  return vmaxvq_s32(a);
+
+  // CIR-LABEL: vmaxvq_s32
+  // CIR: cir.llvm.intrinsic "vector.reduce.smax" {{%.*}} : (!cir.vector<!s32i x 4>) -> !s32i
+
+  // LLVM-LABEL: @test_vmaxvq_s32
+  // LLVM: call i32 @llvm.vector.reduce.smax.v4i32
+
+  // OGCG-LABEL: @test_vmaxvq_s32
+  // OGCG: call i32 @llvm.vector.reduce.smax.v4i32
+}
+
+float32_t test_vmaxvq_f32(float32x4_t a) {
+  return vmaxvq_f32(a);
+
+  // CIR-LABEL: vmaxvq_f32
+  // CIR: cir.llvm.intrinsic "aarch64.neon.fmaxv" {{%.*}} : (!cir.vector<!cir.float x 4>) -> !cir.float
+
+  // LLVM-LABEL: @test_vmaxvq_f32
+  // LLVM: call float @llvm.aarch64.neon.fmaxv.f32.v4f32
+
+  // OGCG-LABEL: @test_vmaxvq_f32
+  // OGCG: call float @llvm.aarch64.neon.fmaxv.f32.v4f32
+}
+
+uint32_t test_vminvq_u32(uint32x4_t a) {
+  return vminvq_u32(a);
+
+  // CIR-LABEL: vminvq_u32
+  // CIR: cir.llvm.intrinsic "vector.reduce.umin" {{%.*}} : (!cir.vector<!u32i x 4>) -> !u32i
+
+  // LLVM-LABEL: @test_vminvq_u32
+  // LLVM: call i32 @llvm.vector.reduce.umin.v4i32
+
+  // OGCG-LABEL: @test_vminvq_u32
+  // OGCG: call i32 @llvm.vector.reduce.umin.v4i32
+}
+
 float32x2_t test_vsqrt_f32(float32x2_t a) {
   return vsqrt_f32(a);
 
