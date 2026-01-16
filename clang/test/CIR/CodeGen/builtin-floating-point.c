@@ -1870,3 +1870,47 @@ int my_isunordered(double a, double b) {
   // OGCG:   %{{.+}} = zext i1 %{{.+}} to i32
   // OGCG: }
 }
+
+// ldexp
+
+double my_ldexp(double x, int exp) {
+  return __builtin_ldexp(x, exp);
+  // CHECK: cir.func {{.*}} @my_ldexp
+  // CHECK: %{{.+}} = cir.llvm.intrinsic "ldexp" %{{.+}}, %{{.+}} : (!cir.double, !s32i) -> !cir.double
+
+  // LLVM: define dso_local double @my_ldexp
+  // LLVM:   %{{.+}} = call double @llvm.ldexp.f64.i32(double %{{.+}}, i32 %{{.+}})
+  // LLVM: }
+
+  // OGCG: define dso_local double @my_ldexp
+  // OGCG:   %{{.+}} = call double @llvm.ldexp.f64.i32(double %{{.+}}, i32 %{{.+}})
+  // OGCG: }
+}
+
+float my_ldexpf(float x, int exp) {
+  return __builtin_ldexpf(x, exp);
+  // CHECK: cir.func {{.*}} @my_ldexpf
+  // CHECK: %{{.+}} = cir.llvm.intrinsic "ldexp" %{{.+}}, %{{.+}} : (!cir.float, !s32i) -> !cir.float
+
+  // LLVM: define dso_local float @my_ldexpf
+  // LLVM:   %{{.+}} = call float @llvm.ldexp.f32.i32(float %{{.+}}, i32 %{{.+}})
+  // LLVM: }
+
+  // OGCG: define dso_local float @my_ldexpf
+  // OGCG:   %{{.+}} = call float @llvm.ldexp.f32.i32(float %{{.+}}, i32 %{{.+}})
+  // OGCG: }
+}
+
+long double my_ldexpl(long double x, int exp) {
+  return __builtin_ldexpl(x, exp);
+  // CHECK: cir.func {{.*}} @my_ldexpl
+  // CHECK: %{{.+}} = cir.llvm.intrinsic "ldexp" %{{.+}}, %{{.+}} : (!cir.long_double<!cir.f80>, !s32i) -> !cir.long_double<!cir.f80>
+
+  // LLVM: define dso_local x86_fp80 @my_ldexpl
+  // LLVM:   %{{.+}} = call x86_fp80 @llvm.ldexp.f80.i32(x86_fp80 %{{.+}}, i32 %{{.+}})
+  // LLVM: }
+
+  // OGCG: define dso_local x86_fp80 @my_ldexpl
+  // OGCG:   %{{.+}} = call x86_fp80 @llvm.ldexp.f80.i32(x86_fp80 %{{.+}}, i32 %{{.+}})
+  // OGCG: }
+}

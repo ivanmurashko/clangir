@@ -1151,10 +1151,20 @@ RValue CIRGenFunction::emitBuiltinExpr(const GlobalDecl GD, unsigned BuiltinID,
 
     case Builtin::BI__builtin_ldexp:
     case Builtin::BI__builtin_ldexpf:
-    case Builtin::BI__builtin_ldexpl:
+    case Builtin::BI__builtin_ldexpl: {
+      // ldexp(x, exp) = x * 2^exp
+      mlir::Value X = emitScalarExpr(E->getArg(0));
+      mlir::Value Exp = emitScalarExpr(E->getArg(1));
+      mlir::Type ResultTy = convertType(E->getType());
+      mlir::Location Loc = getLoc(E->getExprLoc());
+      return RValue::get(cir::LLVMIntrinsicCallOp::create(
+                             builder, Loc, builder.getStringAttr("ldexp"),
+                             ResultTy, mlir::ValueRange{X, Exp})
+                             .getResult());
+    }
     case Builtin::BI__builtin_ldexpf16:
     case Builtin::BI__builtin_ldexpf128:
-      llvm_unreachable("Builtin::BI__builtin_ldexp NYI");
+      llvm_unreachable("Builtin::BI__builtin_ldexp f16/f128 NYI");
 
     default:
       break;
