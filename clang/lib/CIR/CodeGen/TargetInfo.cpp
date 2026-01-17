@@ -3,6 +3,7 @@
 #include "ABIInfo.h"
 #include "CIRGenCXXABI.h"
 #include "CIRGenFunctionInfo.h"
+#include "CIRGenModule.h"
 #include "CIRGenTypes.h"
 #include "mlir/Dialect/Ptr/IR/MemorySpaceInterfaces.h"
 
@@ -12,7 +13,9 @@
 #include "clang/CIR/Dialect/IR/CIRTypes.h"
 #include "clang/CIR/MissingFeatures.h"
 #include "clang/CIR/Target/x86.h"
+#include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/TypeSwitch.h"
+#include "llvm/Support/raw_ostream.h"
 
 using namespace clang;
 using namespace clang::CIRGen;
@@ -428,25 +431,11 @@ public:
 
   void setTargetAttributes(const clang::Decl *decl, mlir::Operation *global,
                            CIRGenModule &cgm) const override {
+    auto func = mlir::dyn_cast<cir::FuncOp>(global);
+    if (!func)
+      return;
 
-    if (const auto *fd = clang::dyn_cast_or_null<clang::FunctionDecl>(decl)) {
-      cir::FuncOp func = mlir::cast<cir::FuncOp>(global);
-      if (func.isDeclaration())
-        return;
-
-      if (cgm.getLangOpts().HIP) {
-        if (fd->hasAttr<CUDAGlobalAttr>()) {
-          func.setCallingConv(cir::CallingConv::AMDGPUKernel);
-          func.setLinkageAttr(cir::GlobalLinkageKindAttr::get(
-              func.getContext(), cir::GlobalLinkageKind::ExternalLinkage));
-          func.setVisibility(mlir::SymbolTable::Visibility::Public);
-          func.setGlobalVisibility(cir::VisibilityKind::Protected);
-        }
-      }
-
-      if (fd->getAttr<CUDALaunchBoundsAttr>())
-        llvm_unreachable("NYI");
-    }
+    setAMDGPUTargetFunctionAttributes(decl, func, cgm);
   }
 };
 
