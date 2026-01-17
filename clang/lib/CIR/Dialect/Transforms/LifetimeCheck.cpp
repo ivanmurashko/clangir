@@ -104,8 +104,8 @@ struct LifetimeCheckPass : public LifetimeCheckBase<LifetimeCheckPass> {
   // coroutine task temporaries are an exception - they need lifetime tracking
   // even as temporaries because they may be captured by the coroutine frame.
   //
-  // Note: Currently uses "ref.tmp" prefix detection which is not fully reliable.
-  // See FIXME comment in implementation for future improvements.
+  // Note: Currently uses "ref.tmp" prefix detection which is not fully
+  // reliable. See FIXME comment in implementation for future improvements.
   bool isSkippableTemporary(mlir::Value v);
   bool isSmartPointerSafeMethod(llvm::StringRef methodName);
   void checkOperators(CallOp callOp, ASTCXXMethodDeclInterface m);
