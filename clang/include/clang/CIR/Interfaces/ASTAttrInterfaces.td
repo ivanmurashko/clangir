@@ -219,6 +219,25 @@ let cppNamespace = "::cir" in {
           return $_attr.getAst()->getDeclContext()->isStdNamespace();
         }]
       >,
+      // Checks if this record represents a smart pointer type from the standard library.
+      // Currently recognizes std::unique_ptr and std::shared_ptr specifically.
+      //
+      // Smart pointers are treated specially during lifetime checking because they:
+      // 1. Have well-defined null state after move (unlike general owner types)
+      // 2. Provide safe methods that can be called on moved-from instances
+      //    (get, reset, release, operator bool)
+      // 3. Have unsafe dereference operators (operator*, operator->) that require
+      //    null checks even when the method is const
+      //
+      // This method checks:
+      // - The record's declaration context is the std namespace
+      // - The record name matches "unique_ptr" or "shared_ptr" exactly
+      //
+      // Future Extension: This could potentially be extended to support other
+      // smart pointer types (e.g., boost::intrusive_ptr, custom smart pointers)
+      // if they follow similar conventions. However, generalizing to all
+      // [[gsl::Owner]] types is not appropriate because not all owners have
+      // the same null-after-move semantics or safe method guarantees.
       InterfaceMethod<"", "bool", "isSmartPointerOwner", (ins), [{}],
         /*defaultImplementation=*/ [{
           if (!$_attr.getAst()->getDeclContext()->isStdNamespace())

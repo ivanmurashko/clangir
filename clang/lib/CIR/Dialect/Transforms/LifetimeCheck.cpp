@@ -80,13 +80,33 @@ struct LifetimeCheckPass : public LifetimeCheckBase<LifetimeCheckPass> {
   void checkCtor(CallOp callOp, cir::CXXCtorAttr ctor);
   void checkMoveCtor(CallOp callOp, cir::CXXCtorAttr ctor);
   void checkMoveAssignment(CallOp callOp, ASTCXXMethodDeclInterface m);
+  // Checks function call arguments for moves via rvalue references and tracks
+  // their moved-from state.
+  //
+  // For each argument passed to an rvalue reference parameter (T&&), this
+  // function:
+  // 1. Checks if the argument is currently in a valid state (not already moved)
+  // 2. Marks the argument as moved-from after the call
+  //
+  // This performs both checking (detecting use-after-move) and tracking
+  // (updating program state) for function call arguments.
   void checkMoveInCallArgs(CallOp callOp);
   void checkArgForRValueRef(CallOp callOp, unsigned argIdx,
                             ASTFunctionDeclInterface funcDecl);
   void checkCopyAssignment(CallOp callOp, ASTCXXMethodDeclInterface m);
   void checkNonConstUseOfOwner(mlir::Value ownerAddr, mlir::Location loc);
   void markOwnerAsMovedFrom(mlir::Value addr, mlir::Location loc);
-  bool movesFromTemporary(mlir::Value v);
+  // Returns true if the value represents a temporary that should be skipped
+  // for move tracking purposes.
+  //
+  // Temporaries are generally skipped because they're destroyed at the end of
+  // the full expression and cannot be used after being moved from. However,
+  // coroutine task temporaries are an exception - they need lifetime tracking
+  // even as temporaries because they may be captured by the coroutine frame.
+  //
+  // Note: Currently uses "ref.tmp" prefix detection which is not fully reliable.
+  // See FIXME comment in implementation for future improvements.
+  bool isSkippableTemporary(mlir::Value v);
   bool isSmartPointerSafeMethod(llvm::StringRef methodName);
   void checkOperators(CallOp callOp, ASTCXXMethodDeclInterface m);
   void checkOtherMethodsAndFunctions(CallOp callOp,
@@ -941,14 +961,14 @@ static bool isSmartPointerType(mlir::Type ty,
   return cache[originalTy];
 }
 
-bool LifetimeCheckPass::movesFromTemporary(mlir::Value v) {
+bool LifetimeCheckPass::isSkippableTemporary(mlir::Value v) {
   auto allocaOp = v.getDefiningOp<cir::AllocaOp>();
   if (!allocaOp)
     return false;
 
   auto name = allocaOp.getName();
   // Temporaries have names starting with "ref.tmp"
-  // TODO: "ref.tmp" naming is not reliable. Consider adding a unit attribute
+  // FIXME: "ref.tmp" naming is not reliable. Consider adding a unit attribute
   // is_temporary to AllocaOp that is set by CIRGen to definitively mark
   // temporaries. This would be more robust than string prefix matching.
   if (!name.starts_with("ref.tmp"))
@@ -1690,7 +1710,7 @@ void LifetimeCheckPass::checkArgForRValueRef(
       checkPointerDeref(addr, callOp.getLoc());
       return;
     }
-    if (!movesFromTemporary(addr))
+    if (!isSkippableTemporary(addr))
       markOwnerAsMovedFrom(addr, callOp.getLoc());
     return;
   }
@@ -1701,7 +1721,7 @@ void LifetimeCheckPass::checkArgForRValueRef(
       checkPointerDeref(addr, callOp.getLoc());
       return;
     }
-    if (!movesFromTemporary(addr))
+    if (!isSkippableTemporary(addr))
       markPsetInvalid(addr, InvalidStyle::MovedFrom, callOp.getLoc());
     return;
   }
@@ -1712,7 +1732,7 @@ void LifetimeCheckPass::checkArgForRValueRef(
     return;
   }
 
-  if (!movesFromTemporary(addr))
+  if (!isSkippableTemporary(addr))
     markPsetInvalid(addr, InvalidStyle::MovedFrom, callOp.getLoc());
 }
 
@@ -1880,8 +1900,23 @@ void LifetimeCheckPass::markOwnerAsMovedFrom(mlir::Value addr,
   markPsetInvalid(addr, InvalidStyle::MovedFrom, loc);
 }
 
+// Returns true if the method can be safely called on a moved-from (null)
+// smart pointer.
+//
+// Safe methods for std::unique_ptr and std::shared_ptr:
+// - get(): Returns the raw pointer (nullptr for moved-from pointer)
+// - release(): Releases ownership and returns pointer (nullptr if empty)
+// - reset(): Resets to a new pointer (handles nullptr gracefully)
+// - operator bool: Checks if pointer is non-null (returns false if moved-from)
+//
+// Unsafe methods that require valid (non-null) pointers:
+// - operator*: Dereferences pointer (undefined behavior if null)
+// - operator->: Member access through pointer (undefined behavior if null)
+//
+// This is specific to std::unique_ptr and std::shared_ptr because they have
+// well-defined null-after-move semantics. Other owner types may have different
+// contracts for moved-from state.
 bool LifetimeCheckPass::isSmartPointerSafeMethod(llvm::StringRef methodName) {
-  // Safe methods that can be called on moved-from (null) smart pointers
   return methodName == "get" || methodName == "release" ||
          methodName == "reset" || methodName == "operator bool";
 }
@@ -1911,7 +1946,7 @@ void LifetimeCheckPass::checkMoveCtor(CallOp callOp, cir::CXXCtorAttr ctor) {
   auto addr = getThisParamOwnerCategory(callOp);
   if (addr && owners.count(src)) {
     // Don't mark temporaries as moved-from - they're about to be destroyed
-    if (!movesFromTemporary(src))
+    if (!isSkippableTemporary(src))
       markOwnerAsMovedFrom(src, callOp.getLoc());
     return;
   }
@@ -1920,7 +1955,7 @@ void LifetimeCheckPass::checkMoveCtor(CallOp callOp, cir::CXXCtorAttr ctor) {
   addr = getThisParamPointerCategory(callOp);
   if (addr && ptrs.count(src)) {
     // Don't mark temporaries as moved-from
-    if (!movesFromTemporary(src))
+    if (!isSkippableTemporary(src))
       markPsetInvalid(src, InvalidStyle::MovedFrom, callOp.getLoc());
     return;
   }
