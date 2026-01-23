@@ -657,6 +657,14 @@ LogicalResult cir::CastOp::verify() {
         return success();
     }
 
+    // Allow scalar-to-scalar bitcasts if they have the same size
+    if (cir::isScalarType(srcType) && cir::isScalarType(resType)) {
+      mlir::DataLayout dataLayout(
+          getOperation()->getParentOfType<mlir::DataLayoutOpInterface>());
+      if (dataLayout.getTypeSize(srcType) == dataLayout.getTypeSize(resType))
+        return success();
+    }
+
     // This is the only cast kind where we don't want vector types to decay
     // into the element type.
     if ((!mlir::isa<cir::VectorType>(getSrc().getType()) ||
