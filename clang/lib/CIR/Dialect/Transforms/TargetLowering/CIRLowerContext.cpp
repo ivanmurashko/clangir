@@ -52,8 +52,11 @@ clang::TypeInfo CIRLowerContext::getTypeInfoImpl(const mlir::Type T) const {
   // TODO(cir): We should implement a better way to identify type kinds and use
   // builting data layout interface for this.
   auto typeKind = clang::Type::Builtin;
-  if (mlir::isa<IntType, SingleType, DoubleType, BoolType>(T)) {
+  if (mlir::isa<IntType, SingleType, DoubleType, BoolType, FP16Type, BF16Type,
+                FP80Type, FP128Type, PointerType, VoidType>(T)) {
     typeKind = clang::Type::Builtin;
+  } else if (mlir::isa<VectorType>(T)) {
+    typeKind = clang::Type::Vector;
   } else if (mlir::isa<RecordType>(T)) {
     typeKind = clang::Type::Record;
   } else {
@@ -101,7 +104,42 @@ clang::TypeInfo CIRLowerContext::getTypeInfoImpl(const mlir::Type T) const {
       Align = Target->getPointerAlign(clang::LangAS::Default);
       break;
     }
+    if (mlir::isa<FP16Type>(T)) {
+      Width = Target->getHalfWidth();
+      Align = Target->getHalfAlign();
+      break;
+    }
+    if (mlir::isa<BF16Type>(T)) {
+      Width = Target->getBFloat16Width();
+      Align = Target->getBFloat16Align();
+      break;
+    }
+    if (mlir::isa<FP80Type>(T)) {
+      Width = Target->getLongDoubleWidth();
+      Align = Target->getLongDoubleAlign();
+      break;
+    }
+    if (mlir::isa<FP128Type>(T)) {
+      Width = Target->getFloat128Width();
+      Align = Target->getFloat128Align();
+      break;
+    }
+    if (mlir::isa<VoidType>(T)) {
+      // GCC extension: alignof(void) = 8 bits.
+      // See ASTContext::getTypeInfoImpl in clang/lib/AST/ASTContext.cpp.
+      Width = 0;
+      Align = 8;
+      break;
+    }
     cir_cconv_unreachable("Unknown builtin type!");
+    break;
+  }
+  case clang::Type::Vector: {
+    auto vecTy = mlir::cast<VectorType>(T);
+    clang::TypeInfo eltInfo = getTypeInfo(vecTy.getElementType());
+    uint64_t numElts = vecTy.getSize();
+    Width = eltInfo.Width * numElts;
+    Align = std::min<uint64_t>(Width, 128);
     break;
   }
   case clang::Type::Record: {
