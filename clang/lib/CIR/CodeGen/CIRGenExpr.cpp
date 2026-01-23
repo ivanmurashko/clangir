@@ -677,17 +677,35 @@ void CIRGenFunction::emitStoreOfScalar(mlir::Value value, Address addr,
   auto eltTy = addr.getElementType();
   if (const auto *clangVecTy = ty->getAs<clang::VectorType>()) {
     // Boolean vectors use `iN` as storage type.
+    if (clangVecTy->isPackedVectorBoolType(getContext())) {
+      llvm_unreachable("packed vector<bool> store NYI");
+    }
+
     if (clangVecTy->isExtVectorBoolType()) {
       llvm_unreachable("isExtVectorBoolType NYI");
     }
 
-    // Handle vectors of size 3 like size 4 for better performance.
+    // Handles vectors of sizes that are likely to be expanded to a larger size
+    // to optimize performance.
     const auto vTy = cast<cir::VectorType>(eltTy);
     auto newVecTy =
         CGM.getABIInfo().getOptimalVectorMemoryType(vTy, getLangOpts());
 
     if (vTy != newVecTy) {
-      llvm_unreachable("NYI");
+      unsigned srcElts = vTy.getSize();
+      unsigned dstElts = newVecTy.getSize();
+      if (dstElts <= srcElts)
+        llvm_unreachable("NYI"); // Shrink the vector
+
+      // Build mask for extending vector with undef elements.
+      // Example: char3 -> char4 => mask = [0, 1, 2, -1]
+      llvm::SmallVector<int64_t, 16> mask(srcElts);
+      std::iota(mask.begin(), mask.end(), 0);
+      // Handle vector widening by filling remaining lanes with undef (-1)
+      mask.resize(dstElts, -1);
+
+      value = builder.createVecShuffle(*currSrcLoc, value, mask);
+      eltTy = newVecTy; // Ensure the store uses the widened vector type
     }
   }
 
