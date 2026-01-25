@@ -226,8 +226,11 @@ let cppNamespace = "::cir" in {
       // 1. Have well-defined null state after move (unlike general owner types)
       // 2. Provide safe methods that can be called on moved-from instances
       //    (get, reset, release, operator bool)
+      //    See § 20.3.1.2 [unique.ptr]/8 and § 20.3.2.2 [util.smartptr.shared]/8
       // 3. Have unsafe dereference operators (operator*, operator->) that require
       //    null checks even when the method is const
+      //    See § 20.3.1.2 [unique.ptr]/6 & § 20.3.2.2 [util.smartptr.shared]/6:
+      //    "operator* and operator-> require that get() != nullptr"
       //
       // This method checks:
       // - The record's declaration context is the std namespace
