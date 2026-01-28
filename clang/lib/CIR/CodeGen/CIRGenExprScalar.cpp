@@ -2246,21 +2246,55 @@ mlir::Value ScalarExprEmitter::VisitInitListExpr(InitListExpr *E) {
     assert(!cir::MissingFeatures::scalableVectors() &&
            "NYI: scalable vector init");
     assert(!cir::MissingFeatures::vectorConstants() && "NYI: vector constants");
+
     auto VectorType =
-        mlir::dyn_cast<cir::VectorType>(CGF.convertType(E->getType()));
+        mlir::cast<cir::VectorType>(CGF.convertType(E->getType()));
+    auto ElemTy = VectorType.getElementType();
+
     SmallVector<mlir::Value, 16> Elements;
+
     for (Expr *init : E->inits()) {
-      Elements.push_back(Visit(init));
+      if (isa<ExtVectorElementExpr>(init))
+        llvm_unreachable(
+            "NYI: vector initializer with ExtVectorElementExpr (swizzle)");
+
+      mlir::Value V = Visit(init);
+      mlir::Type VTy = V.getType();
+
+      // Scalar element: one lane
+      if (VTy == ElemTy) {
+        Elements.push_back(V);
+        continue;
+      }
+
+      // Subvector: flatten into scalar lanes
+      auto SubVecTy = mlir::cast<cir::VectorType>(VTy);
+      if (SubVecTy.getElementType() != ElemTy)
+        llvm_unreachable("invalid vector initializer element type");
+
+      // Full vector replacement
+      for (unsigned i = 0; i < SubVecTy.getSize(); ++i) {
+        auto Idx = CGF.getBuilder().getUInt32(i, CGF.getLoc(E->getExprLoc()));
+        Elements.push_back(cir::VecExtractOp::create(
+            CGF.getBuilder(), CGF.getLoc(E->getExprLoc()), ElemTy, V, Idx));
+      }
+
+      continue;
     }
-    // Zero-initialize any remaining values.
-    if (NumInitElements < VectorType.getSize()) {
+
+    // Zero-initialize remaining lanes
+    if (Elements.size() < VectorType.getSize()) {
       mlir::Value ZeroValue = cir::ConstantOp::create(
           CGF.getBuilder(), CGF.getLoc(E->getSourceRange()),
-          CGF.getBuilder().getZeroInitAttr(VectorType.getElementType()));
-      for (uint64_t i = NumInitElements; i < VectorType.getSize(); ++i) {
+          CGF.getBuilder().getZeroInitAttr(ElemTy));
+
+      while (Elements.size() < VectorType.getSize())
         Elements.push_back(ZeroValue);
-      }
     }
+
+    // Truncate excess lanes if any
+    Elements.resize(VectorType.getSize());
+
     return cir::VecCreateOp::create(CGF.getBuilder(),
                                     CGF.getLoc(E->getSourceRange()), VectorType,
                                     Elements);
