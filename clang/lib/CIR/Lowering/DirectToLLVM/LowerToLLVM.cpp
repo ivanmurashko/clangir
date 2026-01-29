@@ -1323,6 +1323,80 @@ mlir::Type CIRToLLVMCastOpLowering::convertTy(mlir::Type ty) const {
   return getTypeConverter()->convertType(ty);
 }
 
+// Lower a bool-to-integer cast for either scalar or vector types.
+// Mirrors LLVM IR semantics:
+//   - Same width: bitcast
+//   - Different width: zero-extend
+mlir::LogicalResult CIRToLLVMCastOpLowering::lowerBoolToIntCast(
+    cir::CastOp castOp, mlir::Value srcValue, mlir::Type dstType,
+    mlir::ConversionPatternRewriter &rewriter) const {
+  mlir::Type srcType = srcValue.getType();
+  mlir::Type dstElemTy = dstType;
+
+  // If it's a vector, get the element type to check signedness
+  if (auto vt = mlir::dyn_cast<mlir::VectorType>(dstType))
+    dstElemTy = vt.getElementType();
+
+  bool isSigned =
+      mlir::isa<cir::VectorType>(castOp.getType())
+          ? mlir::cast<cir::IntType>(elementTypeIfVector(castOp.getType()))
+                .isSigned()
+          : false;
+
+  // Scalar case: i1 -> iN
+  if (auto srcIntTy = mlir::dyn_cast<mlir::IntegerType>(srcType)) {
+    auto dstIntTy = mlir::cast<mlir::IntegerType>(dstType);
+    if (srcIntTy.getWidth() == dstIntTy.getWidth()) {
+      rewriter.replaceOpWithNewOp<mlir::LLVM::BitcastOp>(castOp, dstType,
+                                                         srcValue);
+    } else {
+      if (isSigned)
+        rewriter.replaceOpWithNewOp<mlir::LLVM::SExtOp>(castOp, dstType,
+                                                        srcValue);
+      else
+        rewriter.replaceOpWithNewOp<mlir::LLVM::ZExtOp>(castOp, dstType,
+                                                        srcValue);
+    }
+    return mlir::success();
+  }
+
+  // Vector case: vector<i1> -> vector<iN>
+  if (auto srcVecTy = mlir::dyn_cast<mlir::VectorType>(srcType)) {
+    auto dstVecTy = mlir::dyn_cast<mlir::VectorType>(dstType);
+    if (!dstVecTy)
+      return rewriter.notifyMatchFailure(castOp, "Target must be vector");
+
+    // Shape check
+    if (srcVecTy.getShape() != dstVecTy.getShape())
+      return rewriter.notifyMatchFailure(castOp, "Vector shape mismatch");
+
+    auto srcElemTy =
+        mlir::dyn_cast<mlir::IntegerType>(srcVecTy.getElementType());
+    auto dstElemTy =
+        mlir::dyn_cast<mlir::IntegerType>(dstVecTy.getElementType());
+
+    if (!srcElemTy || !dstElemTy)
+      return rewriter.notifyMatchFailure(castOp, "Elements must be integers");
+
+    if (srcElemTy.getWidth() == dstElemTy.getWidth()) {
+      rewriter.replaceOpWithNewOp<mlir::LLVM::BitcastOp>(castOp, dstType,
+                                                         srcValue);
+    } else {
+      // If destination is signed, use SExt to get -1 for true (matches OG)
+      // If destination is unsigned/bool, use ZExt to get 1 for true
+      if (isSigned)
+        rewriter.replaceOpWithNewOp<mlir::LLVM::SExtOp>(castOp, dstType,
+                                                        srcValue);
+      else
+        rewriter.replaceOpWithNewOp<mlir::LLVM::ZExtOp>(castOp, dstType,
+                                                        srcValue);
+    }
+    return mlir::success();
+  }
+
+  return rewriter.notifyMatchFailure(castOp, "Unsupported type combination");
+}
+
 mlir::LogicalResult CIRToLLVMCastOpLowering::matchAndRewrite(
     cir::CastOp castOp, OpAdaptor adaptor,
     mlir::ConversionPatternRewriter &rewriter) const {
@@ -1423,18 +1497,9 @@ mlir::LogicalResult CIRToLLVMCastOpLowering::matchAndRewrite(
     return mlir::success();
   }
   case cir::CastKind::bool_to_int: {
-    auto dstTy = mlir::cast<cir::IntType>(castOp.getType());
-    auto llvmSrcVal = adaptor.getSrc();
-    auto llvmSrcTy = mlir::cast<mlir::IntegerType>(llvmSrcVal.getType());
-    auto llvmDstTy =
-        mlir::cast<mlir::IntegerType>(getTypeConverter()->convertType(dstTy));
-    if (llvmSrcTy.getWidth() == llvmDstTy.getWidth())
-      rewriter.replaceOpWithNewOp<mlir::LLVM::BitcastOp>(castOp, llvmDstTy,
-                                                         llvmSrcVal);
-    else
-      rewriter.replaceOpWithNewOp<mlir::LLVM::ZExtOp>(castOp, llvmDstTy,
-                                                      llvmSrcVal);
-    return mlir::success();
+    mlir::Value srcValue = adaptor.getSrc();
+    mlir::Type dstType = getTypeConverter()->convertType(castOp.getType());
+    return lowerBoolToIntCast(castOp, srcValue, dstType, rewriter);
   }
   case cir::CastKind::bool_to_float: {
     auto dstTy = castOp.getType();
