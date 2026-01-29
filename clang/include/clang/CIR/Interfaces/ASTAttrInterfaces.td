@@ -106,6 +106,19 @@ let cppNamespace = "::cir" in {
             mangleCtx->mangleName(clang::GlobalDecl($_attr.getAst()), os);
           return out;
         }]
+      >,
+      InterfaceMethod<"", "unsigned", "getNumParams", (ins), [{}],
+        /*defaultImplementation=*/ [{
+          return $_attr.getAst()->getNumParams();
+        }]
+      >,
+      InterfaceMethod<"", "bool", "isParamRValueReference", (ins "unsigned":$paramIdx), [{}],
+        /*defaultImplementation=*/ [{
+          if (paramIdx >= $_attr.getAst()->getNumParams())
+            return false;
+          auto *param = $_attr.getAst()->getParamDecl(paramIdx);
+          return param->getType()->isRValueReferenceType();
+        }]
       >
     ];
   }
@@ -209,6 +222,38 @@ let cppNamespace = "::cir" in {
       InterfaceMethod<"", "bool", "isInStdNamespace", (ins), [{}],
         /*defaultImplementation=*/ [{
           return $_attr.getAst()->getDeclContext()->isStdNamespace();
+        }]
+      >,
+      // Checks if this record represents a smart pointer type from the standard library.
+      // Currently recognizes std::unique_ptr and std::shared_ptr specifically.
+      //
+      // Smart pointers are treated specially during lifetime checking because they:
+      // 1. Have well-defined null state after move (unlike general owner types)
+      // 2. Provide safe methods that can be called on moved-from instances
+      //    (get, reset, release, operator bool)
+      //    See § 20.3.1.2 [unique.ptr]/8 and § 20.3.2.2 [util.smartptr.shared]/8
+      // 3. Have unsafe dereference operators (operator*, operator->) that require
+      //    null checks even when the method is const
+      //    See § 20.3.1.2 [unique.ptr]/6 & § 20.3.2.2 [util.smartptr.shared]/6:
+      //    "operator* and operator-> require that get() != nullptr"
+      //
+      // This method checks:
+      // - The record's declaration context is the std namespace
+      // - The record name matches "unique_ptr" or "shared_ptr" exactly
+      //
+      // Future Extension: This could potentially be extended to support other
+      // smart pointer types (e.g., boost::intrusive_ptr, custom smart pointers)
+      // if they follow similar conventions. However, generalizing to all
+      // [[gsl::Owner]] types is not appropriate because not all owners have
+      // the same null-after-move semantics or safe method guarantees.
+      InterfaceMethod<"", "bool", "isSmartPointerOwner", (ins), [{}],
+        /*defaultImplementation=*/ [{
+          if (!$_attr.getAst()->getDeclContext()->isStdNamespace())
+            return false;
+          // For template classes, getName() returns the template name (e.g., "unique_ptr")
+          // without template parameters, which is what we want
+          llvm::StringRef name = $_attr.getAst()->getName();
+          return name == "unique_ptr" || name == "shared_ptr";
         }]
       >,
       // Note: `getRawDecl` is useful for debugging because it allows dumping
