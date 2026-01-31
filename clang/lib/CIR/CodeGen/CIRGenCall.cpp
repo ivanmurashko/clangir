@@ -698,7 +698,7 @@ RValue CIRGenFunction::emitCall(const CIRGenFunctionInfo &CallInfo,
       bool DestIsVolatile = ReturnValue.isVolatile();
 
       if (!DestPtr.isValid()) {
-        DestPtr = CreateMemTemp(RetTy, callLoc, getCounterAggTmpAsString());
+        DestPtr = CreateAggTmpAddress(RetTy, callLoc);
         DestIsVolatile = false;
       }
 
@@ -832,8 +832,7 @@ RValue CIRGenFunction::emitAnyExprToTemp(const Expr *E) {
   AggValueSlot AggSlot = AggValueSlot::ignored();
 
   if (hasAggregateEvaluationKind(E->getType()))
-    AggSlot = CreateAggTemp(E->getType(), getLoc(E->getSourceRange()),
-                            getCounterAggTmpAsString());
+    AggSlot = CreateAggTmp(E->getType(), getLoc(E->getSourceRange()));
 
   return emitAnyExpr(E, AggSlot);
 }

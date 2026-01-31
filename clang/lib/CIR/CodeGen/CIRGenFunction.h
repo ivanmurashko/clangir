@@ -1762,15 +1762,18 @@ public:
   mlir::Value emitAlloca(llvm::StringRef name, clang::QualType ty,
                          mlir::Location loc, clang::CharUnits alignment,
                          bool insertIntoFnEntryBlock = false,
-                         mlir::Value arraySize = nullptr);
+                         mlir::Value arraySize = nullptr,
+                         bool isTemporary = false);
   mlir::Value emitAlloca(llvm::StringRef name, mlir::Type ty,
                          mlir::Location loc, clang::CharUnits alignment,
                          bool insertIntoFnEntryBlock = false,
-                         mlir::Value arraySize = nullptr);
+                         mlir::Value arraySize = nullptr,
+                         bool isTemporary = false);
   mlir::Value emitAlloca(llvm::StringRef name, mlir::Type ty,
                          mlir::Location loc, clang::CharUnits alignment,
                          mlir::OpBuilder::InsertPoint ip,
-                         mlir::Value arraySize = nullptr);
+                         mlir::Value arraySize = nullptr,
+                         bool isTemporary = false);
 
   /// Emit code to compute the specified expression which can have any type. The
   /// result is returned as an RValue struct. If this is an aggregate
@@ -2589,22 +2592,23 @@ public:
   cir::AllocaOp CreateTempAlloca(mlir::Type Ty, mlir::Location Loc,
                                  const Twine &Name = "tmp",
                                  mlir::Value ArraySize = nullptr,
-                                 bool insertIntoFnEntryBlock = false);
+                                 bool insertIntoFnEntryBlock = false,
+                                 bool isTemporary = false);
   cir::AllocaOp CreateTempAllocaInFnEntryBlock(mlir::Type Ty,
                                                mlir::Location Loc,
                                                const Twine &Name = "tmp",
-                                               mlir::Value ArraySize = nullptr);
+                                               mlir::Value ArraySize = nullptr,
+                                               bool isTemporary = false);
   cir::AllocaOp CreateTempAlloca(mlir::Type Ty, mlir::Location Loc,
                                  const Twine &Name = "tmp",
                                  mlir::OpBuilder::InsertPoint ip = {},
-                                 mlir::Value ArraySize = nullptr);
-  Address CreateTempAlloca(mlir::Type Ty,
-                           mlir::ptr::MemorySpaceAttrInterface destAS,
-                           CharUnits align, mlir::Location Loc,
-                           const Twine &Name = "tmp",
-                           mlir::Value ArraySize = nullptr,
-                           Address *Alloca = nullptr,
-                           mlir::OpBuilder::InsertPoint ip = {});
+                                 mlir::Value ArraySize = nullptr,
+                                 bool isTemporary = false);
+  Address CreateTempAlloca(
+      mlir::Type Ty, mlir::ptr::MemorySpaceAttrInterface destAS,
+      CharUnits align, mlir::Location Loc, const Twine &Name = "tmp",
+      mlir::Value ArraySize = nullptr, Address *Alloca = nullptr,
+      mlir::OpBuilder::InsertPoint ip = {}, bool isTemporary = false);
 
   /// CreateTempAlloca - This creates a alloca and inserts it into the entry
   /// block. The alloca is casted to default address space if necessary.
@@ -2615,13 +2619,15 @@ public:
                            const Twine &Name = "tmp",
                            mlir::Value ArraySize = nullptr,
                            Address *Alloca = nullptr,
-                           mlir::OpBuilder::InsertPoint ip = {});
+                           mlir::OpBuilder::InsertPoint ip = {},
+                           bool isTemporary = false);
 
   Address CreateTempAllocaWithoutCast(mlir::Type Ty, CharUnits align,
                                       mlir::Location Loc,
                                       const Twine &Name = "tmp",
                                       mlir::Value ArraySize = nullptr,
-                                      mlir::OpBuilder::InsertPoint ip = {});
+                                      mlir::OpBuilder::InsertPoint ip = {},
+                                      bool isTemporary = false);
 
   /// If \p alloca is not in the destination address space, insert an address
   /// space cast. The returned Address will have the destination address space
@@ -2637,10 +2643,22 @@ public:
   /// the original alloca instruction by \p Alloca if it is not nullptr.
   Address CreateMemTemp(QualType T, mlir::Location Loc,
                         const Twine &Name = "tmp", Address *Alloca = nullptr,
-                        mlir::OpBuilder::InsertPoint ip = {});
+                        mlir::OpBuilder::InsertPoint ip = {},
+                        bool isTemporary = false);
   Address CreateMemTemp(QualType T, CharUnits Align, mlir::Location Loc,
                         const Twine &Name = "tmp", Address *Alloca = nullptr,
-                        mlir::OpBuilder::InsertPoint ip = {});
+                        mlir::OpBuilder::InsertPoint ip = {},
+                        bool isTemporary = false);
+
+  /// Create named compiler-generated temporaries (ref.tmp*/agg.tmp*).
+  Address CreateRefTmp(QualType T, mlir::Location Loc,
+                       Address *Alloca = nullptr,
+                       mlir::OpBuilder::InsertPoint ip = {});
+  Address CreateAggTmpAddress(QualType T, mlir::Location Loc,
+                              Address *Alloca = nullptr,
+                              mlir::OpBuilder::InsertPoint ip = {});
+  AggValueSlot CreateAggTmp(QualType T, mlir::Location Loc,
+                            Address *Alloca = nullptr);
 
   /// Create a temporary memory object of the given type, with
   /// appropriate alignment without casting it to the default address space.
@@ -2656,9 +2674,11 @@ public:
                              const Twine &Name = "tmp",
                              Address *Alloca = nullptr) {
     return AggValueSlot::forAddr(
-        CreateMemTemp(T, Loc, Name, Alloca), T.getQualifiers(),
-        AggValueSlot::IsNotDestructed, AggValueSlot::DoesNotNeedGCBarriers,
-        AggValueSlot::IsNotAliased, AggValueSlot::DoesNotOverlap);
+        CreateMemTemp(T, Loc, Name, Alloca, /*ip=*/{},
+                      /*isTemporary=*/true),
+        T.getQualifiers(), AggValueSlot::IsNotDestructed,
+        AggValueSlot::DoesNotNeedGCBarriers, AggValueSlot::IsNotAliased,
+        AggValueSlot::DoesNotOverlap);
   }
 
 private:
