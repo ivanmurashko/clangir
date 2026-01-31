@@ -2638,44 +2638,45 @@ public:
       Address alloca, mlir::ptr::MemorySpaceAttrInterface destLangAS = {},
       mlir::Value arraySize = {});
 
-  /// Create a temporary memory object of the given type, with
-  /// appropriate alignmen and cast it to the default address space. Returns
-  /// the original alloca instruction by \p Alloca if it is not nullptr.
-  Address CreateMemTemp(QualType T, mlir::Location Loc,
-                        const Twine &Name = "tmp", Address *Alloca = nullptr,
-                        mlir::OpBuilder::InsertPoint ip = {},
-                        bool isTemporary = false);
-  Address CreateMemTemp(QualType T, CharUnits Align, mlir::Location Loc,
-                        const Twine &Name = "tmp", Address *Alloca = nullptr,
-                        mlir::OpBuilder::InsertPoint ip = {},
-                        bool isTemporary = false);
+  /// Create a temporary memory object with an explicit name, cast to the
+  /// default address space. Returns the original alloca via \p Alloca.
+  Address CreateMemTempWithName(QualType T, mlir::Location Loc,
+                                const Twine &Name = "tmp",
+                                Address *Alloca = nullptr,
+                                mlir::OpBuilder::InsertPoint ip = {},
+                                bool isTemporary = false);
+  Address CreateMemTempWithName(QualType T, CharUnits Align, mlir::Location Loc,
+                                const Twine &Name = "tmp",
+                                Address *Alloca = nullptr,
+                                mlir::OpBuilder::InsertPoint ip = {},
+                                bool isTemporary = false);
 
-  /// Create named compiler-generated temporaries (ref.tmp*/agg.tmp*).
-  Address CreateRefTmp(QualType T, mlir::Location Loc,
-                       Address *Alloca = nullptr,
-                       mlir::OpBuilder::InsertPoint ip = {});
-  Address CreateAggTmpAddress(QualType T, mlir::Location Loc,
-                              Address *Alloca = nullptr,
-                              mlir::OpBuilder::InsertPoint ip = {});
-  AggValueSlot CreateAggTmp(QualType T, mlir::Location Loc,
-                            Address *Alloca = nullptr);
+  /// Create compiler-generated temporaries with auto-named ref.tmp*/agg.tmp*.
+  Address CreateRefTempWithAutoName(QualType T, mlir::Location Loc,
+                                    Address *Alloca = nullptr,
+                                    mlir::OpBuilder::InsertPoint ip = {});
+  Address
+  CreateAggTempAddressWithAutoName(QualType T, mlir::Location Loc,
+                                   Address *Alloca = nullptr,
+                                   mlir::OpBuilder::InsertPoint ip = {});
+  AggValueSlot CreateAggTempWithAutoName(QualType T, mlir::Location Loc,
+                                         Address *Alloca = nullptr);
 
-  /// Create a temporary memory object of the given type, with
-  /// appropriate alignment without casting it to the default address space.
+  /// Create a temporary memory object with an explicit name, without casting
+  /// it to the default address space.
   Address CreateMemTempWithoutCast(QualType T, mlir::Location Loc,
                                    const Twine &Name = "tmp");
   Address CreateMemTempWithoutCast(QualType T, CharUnits Align,
                                    mlir::Location Loc,
                                    const Twine &Name = "tmp");
 
-  /// Create a temporary memory object for the given
-  /// aggregate type.
-  AggValueSlot CreateAggTemp(QualType T, mlir::Location Loc,
-                             const Twine &Name = "tmp",
-                             Address *Alloca = nullptr) {
+  /// Create an aggregate temporary slot with an explicit name.
+  AggValueSlot CreateAggTempWithName(QualType T, mlir::Location Loc,
+                                     const Twine &Name = "tmp",
+                                     Address *Alloca = nullptr) {
     return AggValueSlot::forAddr(
-        CreateMemTemp(T, Loc, Name, Alloca, /*ip=*/{},
-                      /*isTemporary=*/true),
+        CreateMemTempWithName(T, Loc, Name, Alloca, /*ip=*/{},
+                              /*isTemporary=*/true),
         T.getQualifiers(), AggValueSlot::IsNotDestructed,
         AggValueSlot::DoesNotNeedGCBarriers, AggValueSlot::IsNotAliased,
         AggValueSlot::DoesNotOverlap);
