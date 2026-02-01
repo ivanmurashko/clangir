@@ -1716,7 +1716,10 @@ void LifetimeCheckPass::checkArgForRValueRef(
 
   auto arg = callOp.getArgOperand(argIdx);
 
-  // LoadOp means by-value, not a move - check for moved-from value and return
+  // Case 1: LoadOp (by-value argument loaded from memory)
+  // Detects use of moved-from VALUE TYPES passed by rvalue reference
+  // FAIL: void foo(int&& x); int a = 42; int b = std::move(a); foo(std::move(a));  // ERROR: 'a' is moved-from
+  // OK:   void foo(int&& x); int a = 42; foo(std::move(a));  // OK: 'a' valid before move
   if (auto loadOp = arg.getDefiningOp<cir::LoadOp>()) {
     auto srcAddr = loadOp.getAddr();
     if (isValueTypeMovedFrom(srcAddr)) {
@@ -1733,7 +1736,10 @@ void LifetimeCheckPass::checkArgForRValueRef(
   if (!getPmap().count(addr))
     return;
 
-  // Owner types
+  // Case 2: Owner types (unique_ptr, vector, string, etc.)
+  // Detects use of moved-from OWNER objects
+  // FAIL: void bar(unique_ptr<int>&& p); unique_ptr<int> x = ...; auto y = std::move(x); bar(std::move(x));  // ERROR: 'x' is moved-from
+  // OK:   void bar(unique_ptr<int>&& p); unique_ptr<int> x = ...; bar(std::move(x));  // OK: 'x' valid before move
   if (owners.count(addr)) {
     if (checkPointerDeref(addr, callOp.getLoc()))
       return; // Already reported error
@@ -1741,7 +1747,10 @@ void LifetimeCheckPass::checkArgForRValueRef(
     return;
   }
 
-  // Pointer types - only check Invalid (not NullPtr)
+  // Case 3: Pointer types (T*, T&, iterators)
+  // Detects use of UNINITIALIZED/INVALID pointers (not null - null is allowed)
+  // FAIL: void baz(int*&& p); int* ptr; baz(std::move(ptr));  // ERROR: 'ptr' is uninitialized
+  // OK:   void baz(int*&& p); int x; int* ptr = &x; baz(std::move(ptr));  // OK: 'ptr' is initialized
   if (ptrs.count(addr)) {
     if (getPmap()[addr].count(State::getInvalid())) {
       checkPointerDeref(addr, callOp.getLoc());
@@ -1751,7 +1760,10 @@ void LifetimeCheckPass::checkArgForRValueRef(
     return;
   }
 
-  // Value types - only check Invalid (not NullPtr)
+  // Case 4: Value types (structs, classes without Owner semantics)
+  // Detects use of INVALID value type objects (rare - addresses passed as rvalue refs)
+  // FAIL: void qux(MyStruct&& s); MyStruct obj; /* obj is invalid */; qux(std::move(obj));  // ERROR: 'obj' is invalid
+  // OK:   void qux(MyStruct&& s); MyStruct obj; qux(std::move(obj));  // OK: 'obj' is valid before move
   if (getPmap()[addr].count(State::getInvalid())) {
     checkPointerDeref(addr, callOp.getLoc());
     return;
