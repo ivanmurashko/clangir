@@ -225,3 +225,19 @@ void test_release_after_move() {
 
   int* raw = p.release(); // OK - release() is safe
 }
+
+// Test 14: Multiple owner arguments with rvalue references
+// Regression test for emittedDiagnostics guard bug: when the first argument
+// is already moved-from (triggers diagnostic), the guard would return early
+// and prevent marking the second argument. Uses owner types to hit the
+// unconditional checkPointerDeref path.
+void consume_owner(std::unique_ptr<int>&&);
+void consume_two_owners(std::unique_ptr<int>&&, std::unique_ptr<int>&&);
+void test_multi_arg_owner_move() {
+  std::unique_ptr<int> x(new int(1));
+  std::unique_ptr<int> y(new int(2));
+  consume_owner(std::move(x)); // expected-note {{moved here via std::move or rvalue reference}}
+  consume_two_owners(std::move(x), std::move(y)); // expected-warning {{use of invalid pointer 'x'}}
+                                                    // expected-note@-1 {{moved here via std::move or rvalue reference}}
+  int use_y = *y; // expected-warning {{use of invalid pointer 'y'}}
+}
