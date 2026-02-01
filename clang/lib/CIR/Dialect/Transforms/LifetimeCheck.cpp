@@ -1517,10 +1517,6 @@ void LifetimeCheckPass::emitInvalidHistory(mlir::InFlightDiagnostic &D,
 
 bool LifetimeCheckPass::checkPointerDeref(mlir::Value addr, mlir::Location loc,
                                           DerefStyle derefStyle) {
-  // Skip temporaries early - they're about to be destroyed anyway
-  if (isSkippableTemporary(addr))
-    return false; // Not an error, just a temporary
-
   bool hasInvalid = getPmap()[addr].count(State::getInvalid());
   bool hasNullptr = getPmap()[addr].count(State::getNullPtr());
 
@@ -1536,6 +1532,11 @@ bool LifetimeCheckPass::checkPointerDeref(mlir::Value addr, mlir::Location loc,
     emitPsetRemark();
     psetRemarkEmitted = true;
   }
+
+  // Skip temporaries - they're about to be destroyed anyway
+  // (check after remark emission to preserve diagnostics)
+  if (isSkippableTemporary(addr))
+    return false; // Not an error, just a temporary
 
   // 2.4.2 - On every dereference of a Pointer p, enforce that p is valid.
   if (!hasInvalid && !hasNullptr)
