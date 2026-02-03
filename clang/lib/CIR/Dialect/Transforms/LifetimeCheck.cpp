@@ -69,6 +69,7 @@ struct LifetimeCheckPass : public LifetimeCheckBase<LifetimeCheckPass> {
     RetLambda,
     CallParam,
     IndirectCallParam,
+    UseAfterMove,
   };
   bool checkPointerDeref(mlir::Value addr, mlir::Location loc,
                          DerefStyle derefStyle = DerefStyle::Direct);
@@ -1533,10 +1534,10 @@ bool LifetimeCheckPass::checkPointerDeref(mlir::Value addr, mlir::Location loc,
     psetRemarkEmitted = true;
   }
 
-  // Skip temporaries - they're about to be destroyed anyway
-  // (check after remark emission to preserve diagnostics)
-  if (isSkippableTemporary(addr))
-    return false; // Not an error, just a temporary
+  // Only skip temporaries in use-after-move paths — it's possible this can
+  // be generalized, but currently only tested for use-after-move.
+  if (derefStyle == DerefStyle::UseAfterMove && isSkippableTemporary(addr))
+    return false;
 
   // 2.4.2 - On every dereference of a Pointer p, enforce that p is valid.
   if (!hasInvalid && !hasNullptr)
@@ -1723,7 +1724,7 @@ void LifetimeCheckPass::checkArgForRValueRef(
   if (auto loadOp = arg.getDefiningOp<cir::LoadOp>()) {
     auto srcAddr = loadOp.getAddr();
     if (isValueTypeMovedFrom(srcAddr)) {
-      checkPointerDeref(srcAddr, callOp.getLoc());
+      checkPointerDeref(srcAddr, callOp.getLoc(), DerefStyle::UseAfterMove);
     }
     return;
   }
@@ -1741,7 +1742,7 @@ void LifetimeCheckPass::checkArgForRValueRef(
   // FAIL: void bar(unique_ptr<int>&& p); unique_ptr<int> x = ...; auto y = std::move(x); bar(std::move(x));  // ERROR: 'x' is moved-from
   // OK:   void bar(unique_ptr<int>&& p); unique_ptr<int> x = ...; bar(std::move(x));  // OK: 'x' valid before move
   if (owners.count(addr)) {
-    if (checkPointerDeref(addr, callOp.getLoc()))
+    if (checkPointerDeref(addr, callOp.getLoc(), DerefStyle::UseAfterMove))
       return; // Already reported error
     markOwnerAsMovedFrom(addr, callOp.getLoc());
     return;
@@ -1753,7 +1754,7 @@ void LifetimeCheckPass::checkArgForRValueRef(
   // OK:   void baz(int*&& p); int x; int* ptr = &x; baz(std::move(ptr));  // OK: 'ptr' is initialized
   if (ptrs.count(addr)) {
     if (getPmap()[addr].count(State::getInvalid())) {
-      checkPointerDeref(addr, callOp.getLoc());
+      checkPointerDeref(addr, callOp.getLoc(), DerefStyle::UseAfterMove);
       return;
     }
     markPointerOrValueTypeAsMovedFrom(addr, callOp.getLoc());
@@ -1765,7 +1766,7 @@ void LifetimeCheckPass::checkArgForRValueRef(
   // FAIL: void qux(MyStruct&& s); MyStruct obj; /* obj is invalid */; qux(std::move(obj));  // ERROR: 'obj' is invalid
   // OK:   void qux(MyStruct&& s); MyStruct obj; qux(std::move(obj));  // OK: 'obj' is valid before move
   if (getPmap()[addr].count(State::getInvalid())) {
-    checkPointerDeref(addr, callOp.getLoc());
+    checkPointerDeref(addr, callOp.getLoc(), DerefStyle::UseAfterMove);
     return;
   }
   markPointerOrValueTypeAsMovedFrom(addr, callOp.getLoc());
